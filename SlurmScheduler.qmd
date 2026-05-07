@@ -1,0 +1,62 @@
+---
+author: "Sean Taylor, Marc Carlson, Glenn Morton, Lindsay Clark, Neerja Katiyar"
+date: "last-modified"
+output:
+  html_document: 
+    toc: yes
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+always_allow_html: true
+---
+
+# The Slurm Scheduler {#sec-slurm}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE, include=TRUE)
+library(knitr)
+library(kableExtra)
+```
+
+
+## Access
+
+See @sec-onboard for instructions on getting access to the HPC. You will also want to [request an association]({{< var link.reqassoc >}}) in order to get access to storage space and compute resources.
+
+-   It is important to understand that the node you connect to when you first log in to the cluster is just a login node.
+
+-   When running compute-intensive tasks on the Sasquatch HPC, it's crucial to use the worker nodes instead of the login node. You should always launch your jobs using `srun` for interactive sessions or `sbatch` for batch scripts.
+
+-   The login node is a shared resource for all users to manage files, compile code, and submit jobs. If you run resource-intensive work on this node, you can slow down or freeze the system, preventing others from performing essential tasks. In such cases, your processes may be terminated by an administrator to restore normal operations.
+
+## Using slurm on Sasquatch
+
+-   Submitting jobs @sec-submittingjobs
+-   Monitoring jobs @sec-monitoring
+-   Logging @sec-logging
+-   Scaling jobs @sec-scaling
+
+## Common Slurm Terms
+
+```{r, echo=FALSE, eval=TRUE}
+filePath <- "tables/slurm_terms.txt"
+t1 <- read.table(file=filePath, sep="\t", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+kable(t1) %>% kable_minimal()
+```
+
+## HPC Architecture
+
+Overall architecture diagram of Sasquatch can be found in @sec-introhpc_hpccluster.
+
+Information on the different clusters for Posit can be found in @sec-posit.
+
+
+## Learning resources: SLURM
+
+-   Workload Manager [Rosetta Stone](https://slurm.schedmd.com/rosetta.pdf) - useful resource for users new to SLURM but familiar with other job schedulers (PBS).
+
+-   [SLURM cheatsheet](https://slurm.schedmd.com/pdfs/summary.pdf) - quick guide for reference
+
+-   [SLURM commands and options](https://slurm.schedmd.com/man_index.html) - man pages for all slurm commands including `srun`, `sbatch`, `sacct`, etc.
+
+-   [Additional SLURM Documentation](https://slurm.schedmd.com/) - more complete documentation on features and applications (from SchedMD)

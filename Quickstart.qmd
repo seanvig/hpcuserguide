@@ -1,0 +1,71 @@
+---
+author: "Sean Taylor"
+date: "last-modified"
+format: html
+execute:
+  eval: false
+  echo: true
+---
+
+# Quick Start
+
+## Basic slurm syntax
+
+For CPUs
+
+``` bash
+sbatch --partition=<partition_name> --account=<account_name> \
+  --nodes=1 --ntasks=1 --cpus-per-task=<cpus> --mem-per-cpu=<memory> \
+  --time=<wall_time> myscript
+```
+
+For GPUs
+
+``` bash
+sbatch --partition=<partition_name> --account=<account_name> \
+  --nodes=1 --ntasks=1 --gpus-per-task=<gpus> \
+  --cpus-per-gpu=<cpus> --mem-per-gpu=<memory> \
+  --time=<wall_time> myscript
+```
+
+See @sec-examples_slurm for more examples. See also @sec-submittingjobs for full details.
+
+## Mandatory directives
+
+These directives are mandatory and must be included with every job (on our system)
+
+-   `--partition`: Specify the partition. See @sec-slurm_partitions for more info
+-   `--account`: Specify the account code. See @sec-slurm_accounts for more info
+-   `--time`: Maximum amount of time the job can run. See @sec-slurm_time for more info
+
+## Service units
+
+The following are the service units for Sasquatch. It is recommended that you request resources in increments of these units
+
+-   CPU Compute Unit: 1 CPU + 7.5G memory
+
+-   GPU Compute Unit: 1 GPU + 32 CPU + 480G memory
+
+See @sec-examples_slurm for examples.
+
+## Software
+
+Sasquatch has minimal software pre-installed. Some software resources are available via public associations. Users are encouraged to manage their own software environments. See @sec-software for more information on available resources and recommendations for software environments.
+
+## Storage and File Management
+
+Users are provided with a small `HOME` directory for personal configuration files and access keys. For main storage with larger quotas, we recommend creating an Association. Association storage is the most suitable location for storing data sets, installing software, managing environments, and collaboration.
+
+See @sec-data for more information on data storage, access, and transfer.
+
+See @sec-policies for current quota blocks for `HOME` and Association storage.
+
+## Interactive Development Environments (IDEs)
+
+IDEs on Sasquatch are provided through Posit Workbench, which provides access to integrated IDEs such as RStudio Pro, Jupyter Notebook, JupyterLab, VS Code, and Positron. This is the recommended solution for performing interactive coding sessions.
+
+See @sec-positworkbench for details on accessing.
+
+## Policies
+
+To see full documentation of Sasquatch quotas and policies, see @sec-policies.

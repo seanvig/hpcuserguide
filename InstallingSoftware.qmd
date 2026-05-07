@@ -1,0 +1,181 @@
+---
+author: "Sean Taylor, Glenn Morton, Lindsay Clark, Marc Carlson"
+date: "last-modified"
+format: html
+execute:
+  eval: false
+  echo: true
+---
+# Installing Software {#sec-installingsoftware}
+
+## Directly installing software
+
+The majority of Linux software can be installed by a regular user for their own use. No involvement from a system administrator is required. The easiest situation is when a binary executable is provided, but if you need to compile source code on Sasquatch that is also possible. Within your association directory there should be a `bin` directory, which is where executable software should go.
+
+### Precompiled binaries
+
+One example of software that is provided as a binary is [SRA Toolkit](https://github.com/ncbi/sra-tools/wiki/02.-Installing-SRA-Toolkit). Here I am downloading it according to their instructions, into my group's association. I unzip it and then change permissions so that the rest of my group can move or delete it if they need to.
+
+``` bash
+cd {{< var path.examplelab >}}/bin/
+
+wget --output-document sratoolkit.tar.gz https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-centos_linux64.tar.gz
+
+tar -vxzf sratoolkit.tar.gz
+
+rm sratoolkit.tar.gz
+
+chmod -R 2775 sratoolkit.3.1.0-centos_linux64
+```
+
+Then I need to add it to my path. I can do it this way just for this session, or I can add the below line of code to `~/.bashrc` if I always want to have SRA toolkit available. Better yet, I can make it into a module (see [Building your own modules]).
+
+To add it to path just for this session:
+
+``` bash
+export PATH=$PATH:{{< var path.examplelab >}}/bin/sratoolkit.3.1.0-centos_linux64/bin
+```
+
+I can check that it is on my path now:
+
+``` bash
+[mmouse@cpu-1 bin]$ which fastq-dump
+{{< var path.examplelab >}}/bin/sratoolkit.3.1.0-centos_linux64/bin/fastq-dump
+```
+
+And then test that the tool is working.
+
+``` bash
+fastq-dump --stdout -X 2 SRR390728
+```
+
+### Installing from the source
+
+#### Overview
+
+Each software package will have its own installation method, and therefore one has to carefully read the specific installation instructions before proceeding. However, a common pattern is to install a package from source code, using the following 3 steps:
+
+-   **configure**: Here, the Linux environment is checked for dependencies, and any user settings can be specified. This is the place where one would chose the final installation directory. As a regular user, this would be somewhere under the home directory, e.g. \$HOME/path/to/software, or you can put it in the bin directory of your association.
+
+-   **make**: Compiles the source code and produces the executables.
+
+-   **make install**: The executables are moved to their final destination and will be ready for use
+
+Within your association directory, you should install new software into `bin`, whether downloading a standalone executable or compiling from the source.
+
+When compiling software from source code, you will most likely use the GNU Compiler Collection (gcc). There are multiple versions of the gcc installed on the HPC. The operating system and the system libraries are all compiled with one particular version. Unless you have a good reason to do otherwise, you should compile your custom software using the same version of gcc as the operating system. Please check your versions first and make sure they match.
+
+Version of gcc used for system libraries:
+
+``` bash
+strings -a /usr/lib/libc.so.6 | grep "GCC: ("
+```
+
+Version of gcc used for compilation:
+
+``` bash
+gcc -v 2>&1 | grep version
+```
+
+#### Download
+
+We will install the program HMMER into a test directory as an example.
+
+First, download the source code. Look up the website and find the link to the source code package appropriate for our system (Linux 64 bit). Then use program "curl" to retrieve the file archive:
+
+``` bash
+curl -O http://eddylab.org/software/hmmer3/3.1b2/hmmer-3.1b2-linux-intel-x86_64.tar.gz
+```
+
+Untar the archive, which will create directory hmmer-3.1b2-linux-intel-x86_64:
+
+``` bash
+tar -xzvf hmmer-3.1b2-linux-intel-x86_64.tar.gz
+```
+
+#### Configure
+
+Change directory to hmmer-3.1b2-linux-intel-x86_64. Look for an executable called "configure" and run it with a "help" argument, to view usage options. Look for an option that specifies the final destination of the software:
+
+``` bash
+cd hmmer-3.1b2-linux-intel-x86_64
+./configure --help
+```
+
+Notice in the output the following lines:
+
+``` bash
+...
+ 
+Installation directories:
+  --prefix=PREFIX         install architecture-independent files in PREFIX
+                          [/usr/local]
+  --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
+                          [PREFIX]
+ 
+By default, `make install' will install all the files in
+`/usr/local/bin', `/usr/local/lib' etc.  You can specify
+an installation prefix other than `/usr/local' using `--prefix',
+for instance `--prefix=$HOME'.
+ 
+...
+```
+
+Choose an installation prefix that puts the software into a test directory, just as an example. In a real installation you would have some naming pattern of your software directories that you would use. Now run configure for real:
+
+``` bash
+installdir={{ < var path.examplelab >}}/bin }}
+./configure --prefix=$installdir/hmmer
+```
+
+After making sure there were no errors during configuration, run the remaining 2 steps:
+
+#### 
+
+``` bash
+make
+make install
+```
+
+Check that files have been placed in the chosen destination directory:
+
+``` bash
+[mmouse@login-1 hmmer-3.1b2-linux-intel-x86_64]$ ls -lF $installdir/hmmer/
+total 0
+drwxr-xr-x 2 mmouse upg-mmouse 4096 Oct 31 18:28 bin/
+drwxr-xr-x 2 mmouse upg-mmouse 4096 Oct 31 18:28 include/
+drwxr-xr-x 2 mmouse upg-mmouse 4096 Oct 31 18:28 lib/
+drwxr-xr-x 4 mmouse upg-mmouse 4096 Oct 31 18:28 share/
+```
+
+Installation of the software is now complete. You can test that the software can be run:
+
+``` bash
+[mmouse@login-1 ~]$ ~/test/hmmer/bin/nhmmer -h
+# nhmmer :: search a DNA model or alignment against a DNA database
+# HMMER 3.1b2 (February 2015); http://hmmer.org/
+# Copyright (C) 2015 Howard Hughes Medical Institute.
+# Freely distributed under the GNU General Public License (GPLv3).
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Usage: nhmmer [options] <query hmmfile|alignfile> <target seqfile>
+ 
+Basic options:
+  -h : show brief help on version and usage
+ 
+Options directing output:
+  -o <f>             : direct output to file <f>, not stdout
+  -A <f>             : save multiple alignment of all hits to file <f>
+...
+```
+
+#### Clean up
+
+You can clean up by removing the downloaded archive and the untared installer files
+
+``` bash
+rm hmmer-3.1b2-linux-intel-x86_64.tar.gz
+rm -r hmmer-3.1b2-linux-intel-x86_64
+```
+
+The next step could be to make the software available as a user module. See the section on [Building your own modules](Modules.qmd#custom-modules) for instructions.
+

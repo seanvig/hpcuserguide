@@ -1,0 +1,328 @@
+---
+author: "Sean Taylor, Marc Carlson, Glenn Morton, Lindsay Clark, Neerja Katiyar"
+date: "last-modified"
+output:
+  html_document: 
+    toc: yes
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+always_allow_html: true
+---
+# Submitting Jobs {#sec-submittingjobs}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE, include=TRUE)
+library(knitr)
+library(kableExtra)
+```
+
+## Slurm jobs
+
+### Choosing a job type
+
+In order to get work done, a user submits a "job" to the scheduler. Slurm offers different commands for running jobs, each designed for a specific purpose
+
+#### `sbatch` (Batch jobs)
+
+-   This is the standard method for submitting jobs.
+-   You create a text file called a **batch script** that contains all the Slurm directives and shell commands for your job.
+-   `sbatch` submits this script to the job queue, where it will wait for the requested resources to become available before running.
+-   This method is ideal for long-running, non-interactive tasks, as you can disconnect from the cluster after submitting the job.
+
+The basic syntax for `sbatch` is as follows:
+
+```{bash}
+sbatch --partition=<partition_name> --account=<account_name> \
+  --nodes=1 --ntasks=1 --cpus-per-task=<num_cpus> --mem-per-cpu=<memory> \
+  --gres=gpu:<num_gpus> --time=00-00:00:00 myscript
+```
+
+#### `srun` (Interactive jobs)
+
+-   `srun` runs interactively. It is used to execute a single command or launch a parallel program directly on a compute node.
+
+-   You can use `srun` to launch an interactive shell on a worker node.
+
+-   This is also great way to test a specific command or launch a smaller-scale task without needing a full shell session.
+
+The basic syntax for an interactive job using `srun` is as follows:
+
+```{bash}
+sbatch --partition=<partition_name> --account=<account_name> \
+  --nodes=1 --ntasks=1 --cpus-per-task=<cpus> --mem-per-cpu=<memory> \
+  --time=<wall_time> myscript
+```
+
+For more information on intermediate and advanced uses of these and other slurm commands, please refer to [Additional SLURM Documentation](https://slurm.schedmd.com/).
+
+
+## Mandatory directives
+
+These directives are mandatory and must be included with every job (on our system)
+
+-   `--partition`: Specify the partition. See @sec-slurm_partitions for more info
+-   `--account`: Specify the account code. See @sec-slurm_accounts for more info
+-   `--time`: Maximum amount of time the job can run. See @sec-slurm_time for more info
+
+### `--partition` {#sec-slurm_partitions}
+
+Each partition represents a collection of worker nodes that are set up in a certain way. More abstractly, you can think of a partition as just a pool of resources that your job is 'lined up' to get access to. Once that pool of resources has a spot for your job to run, the scheduler will process your job using that pool of resources.
+
+These are the "general" partitions that anyone can use:
+
+```{r, echo=FALSE, eval=TRUE}
+filePath <- "tables/partition_table.txt"
+t1 <- read.table(file=filePath, sep="\t", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+kable(t1, align = 'l', caption='Partitions on the cluster') %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE, html_font = "\"Trebuchet MS\", verdana, sans-serif")
+```
+
+### `--account` {#sec-slurm_accounts}
+
+The account is used to link your HPC jobs to a specific association or group. This helps track and govern resource usage. Every user is a member of the core association and has access to these public accounts
+
+-   `cpu-core-sponsored` for CPU-based jobs
+
+-   `gpu-core-sponsored` for GPU-based jobs.
+
+When you become a member of a private association, you gain access to accounts that will unlock access to more resources.
+
+The easiest way to list accounts and partitions available to you is through this command:
+
+```{bash}
+sshare -o "Account%40,Partition%40"
+```
+
+Your output of `sshare` probably looks something like this, where "mylab" is the name of an association that you belong to:
+
+```         
+Account                         Partition
+-------------------- --------------------
+cpu-core-sponsored     cpu-core-sponsored
+cpu-mylab-sponsored    cpu-core-sponsored
+gpu-core-sponsored     gpu-core-sponsored
+gpu-mylab-sponsored    gpu-core-sponsored
+cpu-test-sponsored     cpu-test-sponsored
+gpu-test-sponsored     gpu-test-sponsored
+```
+
+### `--time` {#sec-slurm_time}
+
+Sets the maximum wall-clock time your job is allowed to run. The format is `[DD-][HH:]MM:SS`. If your job exceeds this time, it will be automatically terminated by Slurm. The maximum job time on Sasquatch is 14 days.
+
+See @sec-examples for examples on formatting time.
+
+## Resource Directives
+
+Properly requesting resources is a key best practice that ensures your job runs efficiently and doesn't waste resources for other users. CPUs, GPUs, and memory can either be requested statically or dynamically.
+
+### CPUs, GPUs, and Mem
+
+| Command | Example | Description |
+|-------------------|-------------------|----------------------------------|
+| `--cpus` | `--cpus=1` | Requests specific number of of CPUs. (Static) |
+| `--cpus-per-task` | `--cpus-per-task=1` | Specifies number of CPU cores required *for each task* in your job. (Dynamic) |
+| `--cpus-per-gpu` | `--cpus-per-gpu=32` | Specifies number of CPU cores required *for each GPU* in your job. (Dynamic) |
+| `--gpus` | `--gpus=1` | Requests specific number of of GPUs. (Static) |
+| `--gpus-per-task` | `--gpus-per-task=1` | Specifies number of GPU cores required *for each task* in your job. (Dynamic) |
+| `--mem` | `--mem=15G` | Specifies amount of memory required. (Static) |
+| `--mem-per-cpu` | `--mem-per-cpu=7.5G` | Specifies the amount of memory *per CPU core*. (Dynamic) |
+| `--mem-per-gpu` | `--mem-per-gpu=480G` | Specifies the amount of memory *per GPU core*. (Dynamic) |
+| `--ntasks` | `--ntasks=1` | Specifies the number of tasks *per node*. For most jobs, a single task is sufficient. (Dynamic) |
+| `--nodes` | `--nodes=1` | Specifies the number of nodes you need. For most jobs, a single node is sufficient. (Static) |
+
+### Recommended service units
+
+Although slurm gives you fine grain control over resource requests, hardware specs on the worker nodes imply natural ratios of memory, cpus, and gpus:
+
+-   1 CPU/7.5G memory on CPU nodes
+
+-   1 CPU/15G memory on GPU nodes
+
+-   1 GPU/32 CPU on GPU nodes
+
+Maintaining these ratios will result in optimal resource allocations for job packing on the cluster. For example, if your CPU job needs 30G of memory, you should also request 4 CPUs to maintain the ideal ratio.
+
+It is recommended that you request resources in increments of these units
+
+-   **CPU Compute Unit: 1 CPU + 7.5G memory**
+
+-   **GPU Compute Unit: 1 GPU + 32 CPU + 480G memory**
+
+To maintain these service units, we recommend that you allocate cpus, gpus, and memory dynamically. See @sec-examples for examples.
+
+### Default resources
+
+If you do not specify hardware resources, your job will default to the following
+
+-   `--nodes=1`
+
+-   `--ntasks=1`
+
+-   `--cpus=1`
+
+-   `--mem=unlimited`
+
+The memory request is the equivalent of an entire node, so unless the cluster has some idle nodes, this job is unlikely to run in a timely manner.
+
+Always request a reasonable amount of resources for your job. Requesting too little may cause your job to fail (e.g., with an `OUT_OF_MEMORY` error), while requesting too much can cause other users' jobs to wait unnecessarily. You should monitor your job's resource usage to help you tune your requests. The `seff` command is great for this!
+
+## Other useful and important directives
+
+While none of these are mandatory, they are highly recommended for managing your jobs effectively.
+
+`--job-name`: A descriptive name for your job, which makes it easier to identify in the job queue.
+
+`--output (-o)`: Specifies the file where your job's standard output (e.g., print statements) will be written.
+
+`--error (-e)`: Specifies the file where your job's standard error will be written. This is critical for debugging.
+
+`--mail-type`: What events should trigger an email notification? Common values include BEGIN, END, FAIL, or ALL, for example --mail-type=BEGIN,END,FAIL.
+
+`--mail-user`: The email address to send notifications to.
+
+
+Additional details on all parameters and directives see [SLURM Manual Pages on Commands](https://slurm.schedmd.com/man_index.html)
+
+```{r, echo=FALSE, eval=TRUE}
+filePath <- "tables/Summary_of_common_Slurm_options.txt"
+t1 <- read.table(file=filePath, sep="\t", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+kable(t1) %>% kable_minimal() %>% column_spec(1, width = "10em")
+```
+
+**An example submission with custom resources**
+
+```{bash}
+sbatch --partition=cpu-core-sponsored --account=cpu-mylab-sponsored \
+  --nodes=1 --ntasks=1 --cpus-per-task=4 --mem-per-cpu=7.5G \
+  --time=0-0:10:00 \
+  --job-name=my_rna_script \
+  --chdir={{< var path.home >}}/mmouse/logs/ \
+  --mail-user={{< var path.exampleemail >}} \
+  --mail-type=ALL \
+  run_rnaseq_master.sh
+```
+
+## Slurm Batch Scripts {#sec-submittingjobs_batch}
+
+As an alternative to flags on the command-line, Slurm directives can be specified inside the script itself to create a **Slurm script**.
+
+### Example batch script
+
+A Slurm script is a BASH script that contains directives for the Slurm system. Here is a clear example of a basic batch script, which we'll save as `my_cpu_job.sh`. This script will run a Python script called `my_script.py`.
+
+```{bash}
+#!/bin/bash
+#SBATCH --job-name=my_cpu_job
+#SBATCH --partition=cpu-core-sponsored
+#SBATCH --account=cpu-core-sponsored
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem-per-cpu=7.5G
+#SBATCH --time=0-04:00:00
+#SBATCH --output=my_cpu_job.out
+#SBATCH --error=my_cpu_job.err
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user={{< var path.exampleemail >}}
+
+# ^ Resource request
+#------------------------------------------------------------------------------
+# v Execution script
+
+
+# Activate your conda environment
+source ~/.bashrc
+conda activate my_env
+
+# Run your Python script
+python my_script.py
+```
+
+To execute this run
+
+```{bash}
+sbatch my_cpu_job.sh
+```
+
+More example scripts can be found on Sasquatch in the `{{< var path.core >}}/slurm-batch-examples/` directory.
+
+### Recommended syntax
+
+Technically, all Slurm directives can be embedded into a Slurm script. We recommend that certain directives be retained on the command line and not incorporated.
+
+-   `--account` and `--partition` are parameters that can often change depending on who is running it and are dangerous to run blindly.
+
+-   Also `--mail-user` which specifies the email address will change depending on who the user is.
+
+-   Any directive specified on the command line will supersede those embedded in the script.
+
+Here is what we recommend:
+
+```{bash, eval=FALSE}
+sbatch --partition=<partition_name> --account=<account_code> --mail-user=<email> <batch_script.sh>
+```
+
+
+## Scheduled jobs
+
+### Learning about what compute resources are present
+
+-   To list nodes available for computing to Slurm
+
+```{bash}
+sinfo -o "%30N %6c %15m %30G"
+```
+
+-   To get a graphical window with information about resources available and jobs running (note that you will need to have X11 forwarding, either by using `ssh -X` to log into Sasquatch, or by enabling X11 forwarding in MobaXTerm)
+
+```{bash}
+sview
+```
+
+### Crontabs
+Sometimes you may want a job to happen at a regular time interval. If you need to do this on the cluster, I think it's worth it to ask yourself a key questions first:
+
+*Do I really want to do this on a shared resource?*
+
+You should ask this because while slurm does have facilities for scheduling jobs, it is definitely a shared resource. Our cluster can and will be busy at times, the level of system load from day to day is quite stochastic, and we have to allow users to run for fairly long walltimes. All of these things together can interfere with whether or not your job kicks off everytime as specified.
+
+If after considering these things you **still** want to schedule a job, you can do so, but you should not use the classic crontab to do it. Crontab records may get wiped out whenever the head nodes need to be reset, which will lead to frustration if you are trying to depend on those. Instead: use `scrontab`, which is described in [the official docs here](https://slurm.schedmd.com/scrontab.html) and given some context [here](https://commandmasters.com/commands/scrontab-linux/). `scrontab` is quite similar to `crontab`, except that it uses the slurm scheduler to schedule your jobs. This is both more appropriate for a shared resource and also avoids the problem of losing all your crontab records whenever the login nodes get reset.
+
+
+## A note on tasks
+
+One of the most confusing new concepts introduced with slurm is the idea of "tasks". And now that we know what scripts look like, we can look at some concrete examples of what this literally means. For these examples, I will leave out a lot of details just so you can see the really relevant parts.
+
+Here is an example where we say that we want ONE task, but then tell the computer to do TWO things.
+
+```{bash}
+#!/bin/bash
+#SBATCH --ntasks=1
+
+srun sleep 10 & 
+srun sleep 12 &
+wait
+```
+
+*In this case the computer will do these two things as a series of events.*
+
+In the above example we have forced this inefficiency by telling slurm that we only want it to do one task, and then actually giving it to things to do. Slurm responds in this case by doing those two things one after the other.
+
+And here is an example where we say that we have TWO tasks, and then (again) ask the computer to do TWO things.
+
+```{bash}
+#!/bin/bash
+#SBATCH --ntasks=2
+
+srun --ntasks=1 sleep 10 & 
+srun --ntasks=1 sleep 12 &
+wait
+```
+
+*In this case, the computer will also do these two tasks, but this time they are both run at the SAME time.*
+
+Please also notice that for EACH individual task in our 2nd example (each srun call), we ALSO need to tell the computer that we want those steps to be processed as just one task each. When specifying our jobs it helps to be unambiguous like this.
+
+Hopefully you can now see how the task is a central concept for describing your jobs to slurm. A task here is just represents a 'unit' of computing effort, and many of the other slurm arguments ultimately exist to just describe details that are related to these tasks (cpus-per-task, mem-per-cpu etc.).

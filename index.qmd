@@ -1,0 +1,33 @@
+---
+format: html
+---
+
+# Welcome {.unnumbered}
+
+This is the User Guide for Sasquatch HPC. This guide contains the latest guide, best-practices, and recommendations for using Sasquatch in the HPC Core. This book is a living document and is updated frequently. We invite you to come back often to see the latest guidance.
+
+## Where to start
+
+-   If you are familiar with HPCs in general, but new to Sasquatch, take a look at the **Quick Start Guide** starting with @sec-onboard, and then view some of the other chapters as needed.
+
+-   If you are completely new to HPC computing, you may want to start with the **Sasquatch** section beginning with @sec-introhpc and work your way sequentially through subsequent chapters and sections.
+
+-   For users who are new to linux, we have also written an [introductory guide to Linux](#) although we are not actively maintaining it.
+
+## Consultations
+
+Consult with us early on as you are planning your project! We are always happy to meet to discuss engineering and resources needs. We can also provide a letter of support to strengthen your grant application. Please contact us via the [High Performance Computing Service Desk]({{< var link.reqassoc >}}).
+
+## Other resources
+
+### Recordings
+
+-   The [recording of our most recent training session](#) is available to anyone who has gotten a Sasquatch account.
+
+-   We have held some one-hour "lunch and learn" sessions on various topics, with [recordings available here](#sec-lunchandlearn).
+
+## Contact us
+
+-   New users can contact us via our [High Performance Computing Service Desk]({{< var link.reqassoc >}}) or by emailing Research Scientific Computing.
+
+-   Existing users are encouraged to reach out to us on Teams: [High-Performance Computing Platform \| General \| Microsoft Teams]({{< var link.teams_gen >}})

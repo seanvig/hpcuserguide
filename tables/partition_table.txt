@@ -1,0 +1,5 @@
+State	Description	Time
+"cpu-test-sponsored"	"Limited partition that costs nothing to use. For testing purpose only."	"15 minutes"
+"gpu-test-sponsored"	"Limited partition that costs nothing to use. For testing GPU purpose only."	"15 minutes"
+"cpu-core-sponsored"	"Used for most jobs. Can request max cores and memory available."	"Up to 14 days"
+"gpu-core-sponsored"	"Request for GPU jobs. Can request max cores and memory available."	"Up to 14 days"

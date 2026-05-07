@@ -1,0 +1,7 @@
+Option	Description
+"-f ARCHIVE"	"Name of the tarball file, either to be created or unpacked"
+"-c"	"Create a new archive"
+"-x"	"Extract files from an archive"
+"-z"	"Use gzip, either to compress or unpack"
+"-t"	"List the contents of an archive without unpacking"
+"-v"	"Verbosely list files processed"

@@ -1,0 +1,178 @@
+---
+author: "Marc Carlson, Sean Taylor, Glenn Morton, and Lindsay Clark"
+date: "last-modified"
+output:
+  html_document: 
+    toc: yes
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+---
+# Data storage, access, and transfer {#sec-data}
+
+```{r setup1, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE, include=TRUE)
+library(knitr)
+```
+
+Sasquatch provides a high performance parallel file system (HPS) for your storage needs. This file system can support parallel read/write operations (i.e. several processes reading a file in parallel) and performant read/write speeds. All compute, whether interactive or batch jobs should be performed against files on HPS, namely from your `home` or association directories.
+
+## Your home directory
+
+When you first log in, you are in what's called your home directory, at `{{< var path.home >}}/<username>`. Only you have access to this directory, and it is limited to 100 Gb storage. Your home directory is where you will keep things like SSH keys. You can place small data sets here for light testing, but typically you should store your research data and results in your association directory.
+
+What sorts of things *should* go into your home directory?
+
+-   Personal configuration files and access keys
+    -   `~/.bashrc` contains bash commands run on startup, and is useful for setting environmental variables and customizing your bash experience
+    -   `~/.ssh/id_ed25519` and `~/.ssh/id_ed25519.pub`, your SSH key that you use to access Bitbucket
+    -   Access keys for AWS, Azure, and/or Google Cloud
+    -   Personal configuration data for any software you might have installed
+-   Software
+    -   R package installations will land here by default, but it is recommended that you configure R to save to your association. See [R on Sasquatch](RSasquatch.qmd#managing-r-libraries)
+
+## Association directories
+
+For your main storage on Sasquatch, your lab or group will probably have one or more association directories. These are allocated in 1 TB increments and can be shared among multiple users. Although your association directories can be backed up using the snapshot system (if requested), they are not intended for long term storage, so we recommend having a copy of your data on RSS (see below) or elsewhere.
+
+New associations can be requested on [HPC Service Desk]({{< var link.reqassoc >}}). You are free to make associations at any granularity you like, whether it be one for your whole lab, specific projects or grants, or a collaboration with multiple labs. Each association has its own set of users with access.
+
+Say you have an association named `mylab`. The full path to that association will be `{{< var path.examplelab >}}`. It will automatically have these subfolders:
+
+-   `bin`: This is where you put executable files for software that does not require root access for installation.
+-   `lib`: Any C libraries needed to run the software in `bin`.
+-   `module`: Here you can add module files (small text files pointing to executable files in `bin`) so that you can load software as modules using `lmod`.
+-   `container`: Apptainer images (for running containerized software).
+-   `user`: Here there will be one folder for each user in the association. All folders here are readable to everyone in the association. However, each is only writeable to its respective user. This is where you should probably do a lot of your work, since your colleagues can see everything but can't accidentally delete it. If you were to find out that you have run out of space creating conda environments in your home folder, then you could also (for example) create personal conda environments in here.
+
+You are free to make other directories within your association, for example `fastq` for storing raw sequencing reads, or `annotations` for reference genomes. Do an `ls -lh` on anything new you create, and `chmod -R 2775` on your new folders as necessary. However, try to avoid cluttering up your top level directory. Odds and ends of scripts, metadata files, etc. should probably go in your user directory.
+
+To learn more about associations, see the [Associations](Associations.qmd) section of this guide.
+
+### Shared public resources
+
+There are many public datasets such as reference genomes, annotations, and databases that many users at Company will want to access. Since some of them may take up a lot of space or take a long time to download, the Research Scientific Computing team is managing read-only copies of these files which should be accessible to everyone.
+
+To do this we are taking advantage of the same system used to provision an association system to each lab group. So just like you can have associations for personal use, they can also be used to create resources which can then be shared widely available within the institute like this. Here are some of the resources that we have made available at this time. You can also make your own public association if you have data or software that you want to share with all Sasquatch users.
+
+-   `{{< var path.bioinformatics >}}/annotations` has reference genomes and annotations.
+-   `{{< var path.bioinformatics >}}/module` has modules for loading software that we have installed.
+-   `{{< var path.bioinformatics >}}/container` has custom Apptainer containers that we have built.
+
+In order to make these modules available and convenient, you will probably want to add the following line to your `~/.bashrc` file inside of your home:
+
+`module use --append {{< var path.bioinformatics >}}/module`
+
+We recommend familiarizing yourself with this directory before you begin downloading public reference data for your work. It might save you some time. And please feel free to contact us if there are files you would like to see added.
+
+## Network Storage at Company
+
+### Research Storage Service
+
+We highly recommend using the Helens and Baker drives provided by [Research Storage Services (RSS)](#). All data there are backed up on a daily basis, allowing you to retrieve any files you may have accidentally deleted over the past six months. Baker is for long-term storage of data that you aren't actively using, while Helens is for data that you may still need to access frequently.
+
+On Sasquatch, Helens and Baker drives are accessible from `{{< var path.rss >}}` on each of the login nodes. RSS is not mounted on the `cpu`, `gpu`, or `posit` nodes. Thus, you cannot perform computation directly on files stored on RSS, and must copy the files to your home or association directory before working with them. This includes when you are working with Posit Workbench IDEs.
+
+Because your RSS drives can be mounted on your local PC or Mac, this is one way to transfer data back and forth between your computer and Sasquatch. 
+
+**Due to network issues between RSS and Sasquatch, please use `rsync` in place of tools like `mv` and `cp` when transferring data to/from RSS shares.**  `rsync` is less likely to lock up like `cp` and similar tools.
+
+``` bash
+rsync -rzP /data/rss/helens/mouse_m/thingtocopy {{< var path.examplelabuser >}}
+```
+
+List of some common `rsync` flags used in these commands: 
+
+ `-r`: recurse into directories
+ 
+ `-P`: keep partially transferred files, and show progress
+
+ `-z`: compress file data during transfer
+ 
+ `--append`: append data onto shorter files (optional parameter, useful when moving large datasets to allow you continue)
+
+*Always review file modes and ownership after copying/moving files from RSS. RSS will change both*.
+
+### VDIs
+You can also mount your RSS drives to the [Windows VDI](#) exactly the same way you would [mount them](#) to your own Windows machine, then use the Windows VDI to `scp` between RSS and Sasquatch (see below for `scp` examples). However, we do not recommend using `scp` on your local machine to move files between RSS and Sasquatch, because this will download everything to your computer before uploading it to the destination.
+
+### Your O: drive
+
+If you are logged into the Windows VDI, you can open the Windows command prompt and do this to send a file from your O: drive to Sasquatch:
+
+``` bash
+scp myfile.txt mmouse@{{< var link.login1 >}}:{{< var path.examplelabuser >}}
+```
+
+Likewise to copy a file from Sasquatch to O:, do
+
+``` bash
+scp mmouse@{{< var link.login1 >}}:{{< var path.examplelabuser >}}/myfile.txt .
+```
+
+
+## Between Sasquatch and other computers within Company
+
+### General approach
+
+1.  From the Open OnDemand portal [{{< var link.login1 >}}](https://{{< var link.login1 >}}/) or [{{< var link.login2 >}}](https://{{< var link.login2 >}}/), you can use the 'Files' menu to access both your home directory and any association directories. From here you can drag and drop files directly to these locations. Do not use this interface to transfer files between your PC and Helens or Baker.
+
+2.  scp works within the Company network. So from another linux machine (such as a linux style terminal running on a Mac desktop or a WSL instance):
+
+``` bash
+scp -r /data/rnaseq mmouse@{{< var link.login1 >}}:{{< var path.examplelabuser >}}
+```
+
+From the Command Prompt on a Windows machine you might do:
+
+``` bash
+cd "OneDrive\Documents"
+
+scp samplesheet.txt mmouse@{{< var link.login1 >}}:{{< var path.examplelabuser >}}
+```
+
+Likewise you can download files from Sasquatch to your computer:
+
+``` bash
+scp mmouse@{{< var link.login1 >}}:{{< var path.examplelabuser >}}/mindblowingfigure.png .
+```
+
+2.  From Windows when using MobaXterm, you can drop your files into your home or association directory if you have checked the box for "follow terminal folder" from the 'sftp' tab.
+
+3.  From the Explorer pane in VS Code, you can right-click files and select "Download".
+
+## Backing up your code
+
+Ideally, all of your results files are replaceable, because using your input files and code, you could reproduce the entire analysis. (In a practical sense, you do probably want to back up a results file that took you a week to generate.) You already have a working copy of your input data in your lab's association directory, and a permanent copy in your lab's RSS. But what about the code that you are writing on a daily basis? It needs to be in the association directory to run, but that is not for long-term storage. Do you copy it over to RSS each day? Do you append a date to each copy? That approach sounds a bit painful.
+
+We instead recommend that you use the Company's Bitbucket to back up your code every day. It will keep track of all changes to your code, and although you will need to remember to commit and push your code every day, that will still be easier than copying the files every day. See our [tutorial on Git and Bitbucket](#).
+
+## Transferring data from outside Company
+
+### Downloading public data from the internet
+
+If you have a URL for a file that you need such as a reference genome, you can use the `wget` command, for example:
+
+```{bash, eval = FALSE}
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/002/985/GCF_000002985.6_WBcel235/GCF_000002985.6_WBcel235_genomic.gtf.gz
+```
+
+### Cloud resources
+
+When trying to share data with an external collaborator, the transfer can often be facilitated with the use of cloud resources from Azure or AWS. This can support large file transfers of several TBs. Data transfers with external partners require a data transfer agreement. Please contact our team if you need help moving data through cloud resources.
+
+### Globus Connect
+
+If you need to connect to collaborators Globus server, then it is possible to do that. However Company does not have it's own Globus license and server, so we cannot play the role of host with this technology. That means that you can only use this technology if the collaborator you are working with has access to a Globus server on their side. We are also unable to set up Globus access on Sasquatch at this time, so you will need to use a different computer as your endpoint.
+
+[**For this reason, Globus Connect CLI is not recommended for most users. But if you have a collaborator who has their own Globus server, use the method described on the following page:**]{style="color:red"}
+
+[Setup Globus Connect Personal on Linux](#)
+
+### Data transfer errors
+
+Because we are a hospital, Company has much tighter security than most academic institutions would. This can make data transfer difficult in a couple of ways:
+
+-   Port 22 is blocked by the Company firewall by default. This prevents the use of popular transfer methods such as SFTP.  We can consult with you about opening a temporary hole in the firewall if this is the only option for transferring data.  Also, for some specific recurring and secure locations (such as the ATOMX platform), there may already be exceptions put into place that will allow this to work.  So if it seems like something really *should* work, then please give it a try and reach out to us if it doesn't so that we can try and help you out.
+
+-   SSL certificate errors. Company uses SSL certificates to authenticate itself over HTTPS. However, not every piece of software that you will use on Sasquatch will automatically know where to find the certificates. We can consult with you on this but the short version is that there are copies of the current certificates at https://company-domain/bitbucket/projects/EC for your use.

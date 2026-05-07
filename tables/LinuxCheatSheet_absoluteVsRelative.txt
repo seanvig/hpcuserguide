@@ -1,0 +1,6 @@
+A few examples	 
+"mv myfile .."	"moves myfile to the parent directory"
+"cp myfile ../newname"	"copies myfile to the parent directory and names the copy newname"
+"cp /home/turnersd/scripts/bstrap.pl ."	"copies bstrap.pl to ""."" i.e. to dot, or the current directory you're in"
+"cp myfile ~/subdir/newname"	"copies myfile to subdir in your home, naming the copy newname"
+"less ../../../myfile"	"displays screen by screen the content of myfile, which exists 3 directories ""up"""

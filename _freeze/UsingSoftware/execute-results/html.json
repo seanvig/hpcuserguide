@@ -1,0 +1,15 @@
+{
+  "hash": "a6fb9e2d981892d0bb99ba8ce1e52502",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\nauthor: \"Marc Carlson, Sean Taylor, Glenn Morton, Jenny Smith, and Lindsay Clark\"\ndate: \"last-modified\"\noutput:\n  html_document: \n    toc: yes\n    toc_float:\n      collapsed: true\n      smooth_scroll: false\n    anchor-sections: true\nalways_allow_html: true\n---\n\n# Managing and Using Software {#sec-software}\n\n\n\n## Overview\n\nOn Sasquatch, we've adopted a user-centric philosophy for software management. Rather than maintaining a vast collection of pre-installed applications, we maintain a minimal set of common tools while empowering you to manage your own software and dependencies. This approach ensures you have the flexibility to use the exact versions and libraries your research requires, without being constrained by system-wide installations. We encourage you to use tools like modules, mamba, and Singularity containers to effectively build, manage, and maintain your software stack, ensuring a reproducible and efficient workflow. This strategy promotes a more streamlined environment and allows you to tailor your computational setup precisely to your research needs.\n\n## Software solutions\n\nSuppose you would like to run `bcftools` on Sasquatch. Here are the options you should try, roughly in this order, from easiest to most difficult.\n\n1)  See if it has already been installed on the cluster with lmod. Typing `module avail bcftools` will show you any modules matching that name. See @sec-modules_system.\n\n2)  See if there is a container or pipeline provided by the RSC team that already performs your workflow. See @sec-resources for more information.\n\n3)  Find a publicly available Conda package for the software. See @sec-mamba.\n\n4)  Find a publicly available Singularity/Apptainer image, or Docker image for the software. See @sec-containers_using.\n\n5)  If the software has few or no dependencies and can be installed without sudo (i.e. administrative) access, install it in your home directory. See @sec-installingsoftware\n\n6)  Build your own lmod module. See @sec-modules_custom.\n\n7)  Build a new Singularity container and install the software onto it. See @sec-containers_building.\n\nIn subsequent chapters, we will cover how to do each of the above items.\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

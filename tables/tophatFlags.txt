@@ -1,0 +1,6 @@
+Option	Description
+"-p 1"	"tells TopHat to use 1 CPUs for bowtie alignments"
+"-r 100"	"tells TopHat the expected inner distance between the reads of a pair"
+"-o"	"tells TopHat to write the output to a particular directory (one per sample)"
+"-G <known transcripts file>"	"supplies a list of known transcript models"
+"\-\-transcriptome-index"	"TopHat will use the transcriptome and genome and infer 'best' alignments"

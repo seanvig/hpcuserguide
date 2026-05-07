@@ -1,0 +1,6 @@
+Code	Status	Description
+PD	PENDING	Jobs awaiting resource allocation.
+CG	COMPLETING	Job is done executing and has some ongoing processes that are being finalized.
+CD	COMPLETED	Job has completed successfully.
+R	RUNNING	Job has been allocated resources and is being processed by the compute node(s).
+F	FAILED	The job terminated with a non-zero code and stopped executing.

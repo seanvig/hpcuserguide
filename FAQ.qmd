@@ -1,0 +1,55 @@
+---
+author: "Sean Taylor, Glenn Morton"
+date: "last-modified"
+format: html
+---
+# FAQ {#sec-faq}
+
+## Why is data transfer speed to/from RSS slow?
+RSS (Research Storage Services) is located in the Tukwilla, WA datacenter and the HPC is located in San Jose, CA. This distance introduces more latency than RSS was designed for.\
+We are currently working on a solution for this and will announce more when we can.\
+In the meantime, if you have a large amount of data to move we recommend that you use `tmux` for that in conjunction with `rsync`.  The 1st of these will help prevent your session from being cut off and the 2nd will give you options that allow your copy operations to resume part way through.
+
+## How do I determine resources requirements for my job?
+`seff` is a very useful tool to do posthoc analysis of a completed job to look at memory and cpu usage.\
+It is recommended to do a short and small example run on the test partition (`cpu-test-sponsored`) and use `seff <jobid>` to look at the resources consumed and scale accordingly.\
+Please look at [Optimization](Optimization.qmd) for more details.\
+
+## My session looks like it starts but then stops immediately
+Currently there are some UI bugs in the Posit launcher where Posit doesn't properly read the text from the Account and Time fields unless they were edited.\
+To work around this: you need to **make sure to edit the text boxes** and not trust the auto filled values by your browser.\
+
+Posit launcher also doesn't properly show meaningful errors to you the user.\
+We have given this feedback to Posit and they are aware of the issues.\
+
+Please double check your account spelling (use `sshare -o "Account%40,Partition%40"` to see list of your accounts/partitions).\
+
+## My Posit IDE crashes
+Did you exceed your requested memory for your job?\
+You should be able to check this by looking at the error code from your job reported from Slurm.\
+Use this to see your jobs from today `sacct -Xu $USER` and look at the `State` column. If it says `OUT_OF_MEMORY`, then you exceeded your allocation.\
+
+1. Perhaps your data and the intermediate analysis state in memory in larger than you expected/calculated.\
+2. Perhaps your `$HOME` dir has exceeded your quota (either in size or number of files). Please ask a system administrator in Teams about your quota.\
+
+## Why is my `$HOME` full? 
+On Sasquatch, your home directory is small, so it is recommended to use an association and redirect software to install there instead of the likely default of installing to `$HOME`.\
+A lot of software assumes that it will be running on a personal machine instead of an shared resource like an HPC.\
+Some software may have caching, temp directory or some other configurations that may want to use your `$HOME`.\
+For example, Rstudio caches plots in your home, so you may consider clearing out plots in your plot pane you don't need any more or using quarto instead for plotting.\ 
+Also, if you are using R, you should follow the recommendations from our [Posit Workbench](Posit_Workbench.qmd#renviron-file) section so that your R libraries will be installed into your association rather than your home.\
+And finally, if you are using mamba, you should follow the recommendations from our [onboarding and setup documents](Onboard.qmd#install-mamba) so that your mamba environments will be found in your association rather than your home.
+
+## Is there a charge for this? Why do I need to provide a LAN?
+Currently there is no chargeback, but there may be in the future. The LAN is used for tracking purposes only. We will give you as much advanced notice as possible if this changes.
+
+## I heard that we might have access to Gemini.  How does that work?
+Right now we only have access to the basic Gemini chatbot, but access to other kinds of AI are also being explored.  That means that (at least right now), there is not access to things like an API or code assist.  Limitations aside, the Gemini chatbot is a terrific LLM, AND you can use it without fear that it will leak your prompts back to the company that hosts it because our organization has made Google sign a BAA to prevent that.  Please note: use of other chatbots provides no such security assurances, so we strongly urge you to make use of this one.  In order to sign up for Gemini, you can go to [this link]({{< var link.reqgemini >}}) below and fill in a request for access.
+
+
+## I am looking for some software but when I run module avail and I find very few things installed already.
+First of all, if you truly feel that it is surprising that the software you were looking for is not available, please tell us more about it so we can look into it.  Believe it or not, we actually are willing to install things if they are the sort of thing that most people regularly need to use and which are mainstream enough that everyone already knows all about them.  We can't promise that we will agree with everything that you propose, but we will always value hearing from you.  
+
+Secondly, with Sasquatch we have set things up so that you have a LOT of flexibility and power to do the different kinds of things that you need.  We allow you to install stuff into your associations (and make modules there if you want to use those), we allow both mamba and virtual environments, we allow custom R package installations and we allow you to make your own containers or to bring other containers into the environment using Apptainer. So the sky really is the limit here.  And you should really not find that we are in your way if you have something important that you need to run on this cluster. And if you have something that you can't figure out how to do, please reach out to us so that we can try and work out how to make it run together. 
+
+A big part of our mission is to enable you to do cool things. But part of that is that we also expect that you will want to keep personal track of how you deployed things so that you can eventually tell others how you did them.  Anything less than that is not really reproducible science.  As a result we have chosen technical approaches to software deployment that we are hoping make it easier for you to share your work later on. And if you have a choice, we recommend using containers where possible.

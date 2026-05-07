@@ -1,0 +1,83 @@
+---
+title: "Using Mamba/Conda"
+author: "Sean Taylor, Glenn Morton"
+date: "last-modified"
+format: html
+execute:
+  eval: false
+  echo: true
+---
+# Using Mamba/Conda {#sec-mamba}
+
+## What is mamba/anaconda
+Conda is an open-source, cross-platform package and environment management system that simplifies the installation, updating, and management of software packages and their dependencies. It allows users to create isolated environments for different projects, ensuring that conflicting package versions do not interfere with each other. As we have not purchased a license from Anaconda, we rely on the open-source mamba package from the conda-forge community channel, which serves as a faster, C++-based, and fully compatible drop-in replacement for the conda command.
+
+## Install Mamba
+
+See @sec-onboard_mamba
+
+## Channels
+
+### What is a channel
+In conda, a channel is a URL to a repository where packages are stored. When you install a package, conda searches the configured channels to find the necessary files. The order of the channels in your configuration file, `~/.condarc`, determines the priority in which packages are downloaded.
+
+### Open-source channels
+Anaconda considers Company a business and requires that we have an enterprise license to use their channels. We have opted to use open-source channels instead. Businesses without an Anaconda license can use `conda-forge`, a community-driven channel with a vast collection of open-source software. This channel is not maintained by Anaconda and is free for all to use. Other community-maintained channels, such as `bioconda` for bioinformatics software, are also available and free to use. These channels are hosted on anaconda.org, but are not subject to the same licensing restrictions as Anaconda's `defaults` channel.
+
+*Do not use the `defaults` or `R` channels, as these are not open-source channels and require a paid Anaconda license for businesses.*
+
+## Create a conda environment
+
+**Important Note About Channels**
+
+-   do not use the "default" or "R" channels in Conda as these require a paid Anaconda license.
+
+Say I want to run the DNA variant analysis software Slivar. Since its a bioinformatics tool, lets search the [`bioconda` repository](https://bioconda.github.io/search.html?q=slivar).
+
+So, I have learned that a conda package exists for Slivar, and it is published in the bioconda channel. Now I can create a command to make a new environment with Slivar installed. The `-n slivar` means I want to give the environment the (arbitrary) name slivar, the `-c bioconda` means to look in the bioconda channel for packages, and the `slivar` at the end is the package that I want to install. The command might take a few minutes and will prompt me to type `y` to continue.
+
+``` bash
+mamba create -n slivar -c bioconda slivar
+```
+
+Now when I want to use Slivar I do
+
+``` bash
+mamba activate slivar
+```
+
+I can see `(slivar)` next to my bash prompt now, indicating I am in the `slivar` environment that I made. Now I can use Slivar.
+
+``` bash
+slivar --help
+```
+
+You can install more than one tool into an environment. For example, if I wanted to add BCFtools to my `slivar` environment, I would run the following command while the environment was active:
+
+``` bash
+mamba install -c bioconda bcftools
+```
+
+When I am done using or updating it, I can exit the environment.
+
+``` bash
+mamba deactivate
+```
+
+If I forget where I have put the environments that I have made, I can list them.
+
+``` bash
+mamba env list
+```
+
+For more details, the [Managing environments](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) page is very helpful. In particular, you might look at the `--prefix` option for saving an environment in a particular location (like with the project that it is used for), and the `-f` option for creating an environment from a yaml file (making it easy to share and reproduce). I recommend keeping separate environments for separate tasks as much as possible, since it is easy to switch between environments. However, if you have multiple programs that will be piped together, or just used together frequently, it makes sense to put them together in one environment.
+
+## Using conda in a batch script
+
+When you initialize Mamba (or Conda), it modifies your `~/.bashrc` file to add necessary environment variables and functions that allow commands like mamba activate to work correctly. Slurm job scripts are usually run as non-interactive shells. By default, bash does not automatically source `~/.bashrc` for non-interactive shells. By explicitly including source `~/.bashrc` at the beginning of your Slurm job script, you ensure that the Mamba initialization code within your `~/.bashrc` is executed, setting up the necessary environment for Mamba commands to function within the job.
+
+See @sec-submittingjobs_batch for an example.
+
+## Additional help
+
+RSC hosted a [lunch and learn](lunch_and_learn.qmd) that contains more detail on best practices building and maintaining your conda environments that we highly recommend you review: [video](#) - [slide deck](#)

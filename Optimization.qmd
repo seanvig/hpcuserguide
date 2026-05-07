@@ -1,0 +1,148 @@
+---
+author: "Marc Carlson, Sean Taylor, Glenn Morton, and Lindsay Clark"
+date: "last-modified"
+---
+# Optimization {#sec-optimization}
+
+## Optimizing Job Resources
+
+When running a Job on the cluster it is good to ensure you are using the correct amount of resources to fit your job which might require some tuning. If you are unsure what to put in for resources on a particular job it is a good idea to start lower rather than higher and work your way up.
+
+Why is that you ask? :
+
+-   It is easy to over allocate resources when you are unsure, such as `-c 1 --mem=500g` when your job only needs `-c 1 --mem=4g`
+
+-   All users share the cluster. If you request too many resources and are not using them you will inevitably cause issues for everyone else because the system will think that you need more than you actually do to complete your job.
+
+-   Also, if you are using up far more resources than is needed for a particular job or workflow and hampering the use of the cluster for others the cluster administrators might step in to stop that job. They get alerted when a job is requesting far more resources than is needed. See "Administrator Intervention" below.
+
+As you start to tune your workloads you will begin to understand the limits of a particular job or workflow and make it work more effectively leveraging the resources allocated. Here is how you can check to ensure your job is getting the resources it needs.
+
+### "Lying"
+
+*Note: In HPC we use a term call "Lying" which is not the same as the normal term.*
+
+"Lying" is an HPC term for difference in Requested resources and Resources Used.
+
+-   Example: Requesting 50Gb of Memory but only using 4Gb.
+
+    -   Lying indicates that 46Gb of Memory resources were allocated but not used.
+
+HPC Cluster Administrators use this to gather statistics on how much waste is occurring and how close to the mark users are getting when requesting resources. This helps determine when the cluster needs growth and when users need to optimize their workflows.
+
+Future: Having a low "Lying" % can also help users get higher priority to run jobs based on having very optimized workflows.
+
+### Monitoring Memory Usage
+
+Ensuring that you are getting the right allocation of memory to a job is crucial, as processes run by the jobs are not static in their memory usage. Often workloads will start with low memory and increase over time bouncing between different memory allocations. To help tune jobs that are run you should note down the job number when you submit, or find that job number in your email assuming you have used the `--mail-user` and `--mail-type` directives. Then afterwards you can use the `seff` command to see your job efficiency. For example if your job number was 15, you would do `seff 15` and get output like this:
+
+```         
+Job ID: 15
+Cluster: sasquatch
+User/Group: mmouse/upg-mmouse
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:11:59
+CPU Efficiency: 93.50% of 00:12:49 core-walltime
+Job Wall-clock time: 00:12:49
+Memory Utilized: 33.56 GB
+Memory Efficiency: 52.43% of 64.00 GB
+```
+
+The important fields to look at are:
+
+-   Memory Utilized
+
+-   Memory Efficiency
+
+The Memory Utilized parameter is the peak amount of memory that was hit, either by loading, executing, or waiting for the workflow to process. This is the key parameter to pay attention to when trying to determine what amount of memory to use. It shows how high the memory reached during the job run and as such the maximum amount of memory needed to complete that job. If you are having issues with a particular job exiting prematurely, or failing, this is the attribute to consider.
+
+You can get the same information using `sacct` like so, again in this example with job 15. The `MaxRSS` column is the one to pay attention to.
+
+``` {.bash eval="FALSE"}
+sacct -o "JobID,exitcode,State,REQMEM,MaxRSS" -j 15
+```
+
+```         
+JobID        ExitCode      State     ReqMem     MaxRSS
+------------ -------- ---------- ---------- ----------
+15                0:0  COMPLETED        64G
+15.batch          0:0  COMPLETED             35188280K
+15.extern         0:0  COMPLETED                     0
+```
+
+### Monitoring CPU Usage
+
+Ensuring that you are using the appropriate amount of CPUs is very important. As with memory, `seff` and `sacct` can be used to see how efficiently the CPUs were used. This is especially important for multi-core jobs. While many multi-threaded programs can hypothetically use a very large number of cores, in practice most of them lose efficiency above a certain number.
+
+Here is an example of `seff` output on a multithreaded job:
+
+```         
+Job ID: 1000
+Cluster: sasquatch
+User/Group: mmouse/upg-mmouse
+State: COMPLETED (exit code 0)
+Nodes: 1
+Cores per node: 8
+CPU Utilized: 00:03:11
+CPU Efficiency: 10.25% of 00:31:04 core-walltime
+Job Wall-clock time: 00:03:53
+Memory Utilized: 30.24 GB
+Memory Efficiency: 51.62% of 58.59 GB
+```
+
+You can see that if you multiply the number of cores, 8, by the job wall-clock time, 3 minutes and 53 seconds, we get the core-walltime, which is 31 minutes and 4 seconds. But there was only 3 minutes and 11 seconds of utilization, resulting in the efficiency of 10.25%. In this case, I would first double-check my code to make sure I actually told the software to use eight threads. Assuming that wasn't the issue, when running this tool in the future, I would give it fewer cores and see if the efficiency improved. (Note that in reality this particular job was from a stress test of Sasquatch, so file IO or other issues may have impacted the efficiency.)
+
+Using `sacct` to get the same information (although you would have to calculate efficiency manually):
+
+``` {.bash eval="FALSE"}
+sacct -o "JobID,exitcode,State,AllocCPUs,Elapsed,CPUTime,TotalCPU" -j 1000
+```
+
+```         
+JobID        ExitCode      State  AllocCPUS    Elapsed    CPUTime   TotalCPU
+------------ -------- ---------- ---------- ---------- ---------- ----------
+1000              0:0  COMPLETED          8   00:03:53   00:31:04  03:10.553
+1000.batch        0:0  COMPLETED          8   00:03:53   00:31:04  00:51.572
+1000.extern       0:0  COMPLETED          8   00:03:53   00:31:04  00:00.001
+1000.0            0:0  COMPLETED          8   00:03:02   00:24:16  02:18.980
+```
+
+For the most part you can assume that new jobs will only use 1-4 cores unless they have the option to specify more. Please consult the software provider to see if your particular program has a multi-CPU support.
+
+### GPU usage
+
+GPU usage is not available in the `seff` output, but using `sacct` you can get both CPU and GPU usage with the `TRESUsageInTotal` column.
+
+``` {.bash eval="FALSE"}
+sacct -o "JobID,exitcode,State,TRESUsageInTot%120" -j 206241
+```
+
+```         
+JobID        ExitCode      State                                                                                                           TRESUsageInTot
+------------ -------- ---------- ------------------------------------------------------------------------------------------------------------------------
+206241            0:0  COMPLETED                                                                      
+206241.batch      0:0  COMPLETED       cpu=00:46:17,energy=0,fs/disk=12634679834,gres/gpumem=17122M,gres/gpuutil=70,mem=3476456K,pages=6320,vmem=5994184K
+206241.exte+      0:0  COMPLETED                                     cpu=00:00:00,energy=0,fs/disk=7206,gres/gpumem=0,gres/gpuutil=0,mem=0,pages=0,vmem=0
+```
+
+Here we can see non-zero values for `gpumem` and `gpuutil`, confirming that the GPU was used on this job.
+
+### Administrator Intervention
+
+Cluster Administrators reserve the right to preserve the health and functionality of the cluster. As such if a job is submitted that might compromise the cluster for everyone else and Administrator might forcibly kill a job. There are many safeguards to attempt to prevent Administrator Intervention built into the cluster already, however here are some examples of when an Administrator might be alerted and take action:
+
+**Extreme Example: User requests way more resources than can be used by a job.**
+
+*Example: Job can be run across 20 nodes, needs 4Gb of Memory and 1 core to run, however the user specifies:*
+
+``` {.bash eval="FALSE"}
+#SBATCH -N 20
+#SBATCH -n 20
+#SBATCH -c 20
+#SBATCH --mem=20gb
+```
+
+The `-N 20` multiplies the value provided to `--mem`, resulting in 400gb of memory, and the `-n` and `-c` values are also multiplied, resulting in 400 cores. Which is 380 cores and 320gb of memory that another user cannot use.
+
+In the event that an Administrator must intervene you will be contacted via email (and phone if applicable) and the offending job will be terminated.

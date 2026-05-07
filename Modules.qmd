@@ -1,0 +1,160 @@
+---
+author: "Sean Taylor, Glenn Morton, Lindsay Clark, Marc Carlson"
+date: "last-modified"
+format: html
+execute:
+  eval: false
+  echo: true
+---
+
+# Modules {#sec-modules}
+
+## Overview
+
+Environment Modules are a tool that allows users to easily manage and modify their shell environment to support specific applications. General information can be found on Wikipedia and on the project website.
+
+On the HPC some system-wide software is managed as modules, which are configured and maintained by the HPC admins. The following section describes how you can find available software and use it in your own work. The section after that describes how you can set up your own custom modules.
+
+## System modules {#sec-modules_system}
+
+To see what modules are available for loading:
+
+``` bash
+module avail
+```
+
+To see which modules are loaded already:
+
+``` bash
+module list
+```
+
+To load a module:
+
+``` bash
+module load <modulename>
+```
+
+To unload a module
+
+``` bash
+module unload <modulename>
+```
+
+[**System Module Example**]{style="color:blue"}
+
+Cell Ranger is available as a module. To run Cell Ranger, the module has to be loaded first:
+
+``` bash
+[mmouse5@login-1 ~]$ cellranger --version
+-bash: cellranger: command not found
+[mmouse@login-1 ~]$ module load cellranger
+[mmouse@login-1 ~]$ cellranger --version
+cellranger cellranger-8.0.0
+```
+
+## Custom modules {#sec-modules_custom}
+
+If you use a lot of personal software, either downloaded or developed by yourself, it may be beneficial to keep it organized in modules. This helps with preventing conflicts when different software packages use overlapping file names, or with supporting multiple versions of the same software package.
+
+### Overview
+
+Creating and using a module consists of the following steps:
+
+1.  Install the software in your `home` (for personal use) or the `bin` directory of your association. You may keep multiple versions of the same software, each in its own directory.
+
+2.  Create a module file that describes environment settings needed to run the software.
+
+3.  Load the module
+
+4.  Use the software
+
+5.  Unload the module
+
+### Setup
+
+First, a couple of one-time configurations need to be set up:
+
+-   Within your home directory, create `~/.modulefiles` directory for software modules that are only accessible by your user.
+
+-   Within your [association](DataStorageTransfer.qmd#association-directories), you will want to use the `module` folder for storing module files, which will point to executable files in your association's `bin` directory.
+
+    -   These are accessible to all users assigned to the association.
+
+Make the module system aware of these directories. Add the following line to your `~/.bashrc` (replacing the value of `assocname` with your association name):
+
+``` bash
+module use --append {{< var path.examplelab >}}/module
+module use --append $HOME/.modulefiles/
+```
+
+### Install the software
+
+Suppose we have installed `sratoolkit` in our association and now want to make it a module. Follow the instructions for installing the software as shown in @sec-installingsoftware. Do not add the executable to your path.
+
+### Creating module files
+
+User module files live in directory `~/.modulefiles` or in your association under `{{< var path.examplelab >}}/module`. Under it we will create a directory for our application, and in it we will have a separate module file for each version of the application. We can start with an existing module file as a template and modify it to our needs:
+
+The modulefile does not have a file extension, and the name of the file should only be the version number, `3.1.0` in this case.
+
+``` bash
+mkdir -p {{< var path.examplelab >}}/module/sratoolkit
+cp {{< var path.bioinformatics >}}/module/0_modulefile_template {{< var path.examplelab >}}/module/sratoolkit/3.1.0
+```
+
+Then, we edit the module file to make it look like this:
+
+-   Put the name of your software and version in the appropriate place holders
+
+-   In the `set` directive, you are creating a variable called `sratoolkit_root` and providing the path to the installed binaries
+
+-   In the `prepend-path` directive, you are instructing bash to prepend the `sratoolkit_root` directory onto your `$PATH` variable
+
+``` bash
+#%Module1.0
+##
+## sratoolkit modulefile
+##
+proc ModulesHelp { } {
+        puts stderr "\tAdds the sratoolkit version 3.1.0  Binaries to your path."
+}
+ 
+module-whatis   "Adds the sratoolkit version 3.1.0  Binaries to your path."
+ 
+set             sratoolkit_root {{< var path.examplelab >}}/bin/sratoolkit.3.1.0-centos_linux64/bin      
+prepend-path   PATH        $sratoolkit_root
+```
+
+Now our new module has become available:
+
+``` bash
+module avail sratoolkit
+...
+----------------------- {{< var path.examplelab >}}/module ----------------------
+sratoolkit/3.1.0
+```
+
+We test that it works:
+
+``` bash
+module load sratoolkit
+which fastq-dump
+fastq-dump --stdout -X 2 SRR390728
+```
+
+To learn a bit more about how modules are configured and work on the system, the wikipedia page is pretty helpful:
+
+[Click here for a reference on Modules](https://en.wikipedia.org/wiki/Environment_Modules_(software))
+
+## Requesting New System-Wide Application Software
+
+Before making a request for new applications, please double check our HPC Application List to see if it has already been installed.
+
+``` bash
+module avail
+```
+
+If not, then you can submit your request for installation of additional applications, packages, or dependencies through the [HPC Service Desk](#).
+
+Note that, unless the software will be very widely used, we are moving away from system-wide installation in favor of having users manage their own software.

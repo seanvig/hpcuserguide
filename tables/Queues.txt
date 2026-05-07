@@ -1,0 +1,3 @@
+Name of Queue	Type	Max Walltime	Max Walltime (Human Readable)	Default Cores	Default Memory	Max Cores	Max Mem	Nodes
+"freeq"	"Execution"	"24:00:00"	"24 hours"	"1"	"1GB"	"1"	"18" "GB"	"OOD"
+"paidq"	"Execution"	"240:00:00"	"10 days"	"1"	"4GB"	"75"	"4096 GB"	"Compute"

@@ -1,0 +1,3 @@
+Wildcards (use carefully, especially with rm)	 
+"\*"	"matches any character. example: ls *.pl lists any file ending with ".pl" ; rm dataset* will remove all files beginning with ""dataset"""
+"[xyz]"	"matches any character in the brackets (x, y, or z). example: cat do[or]m.txt will display the contents of either doom.txt or dorm.txt"

@@ -1,0 +1,17 @@
+---
+title: "Lunch and learn sessions"
+date: "last-modified"
+format: html
+---
+# Lunch and Learn sessions {#sec-lunchandlearn}
+
+We have run some one hour "lunch and learn" sessions on particular topics. Here are links to materials and recordings.
+
+-   Sasquatch overview - [video](#)
+-   Apptainer - [video](#) - [slide deck](#)
+-   Associations - [video](#) - [slide deck](#)
+-   Mamba - [video](#) - [slide deck](#)
+-   The public bioinformatics association - [video](#) - [slide deck](#)
+-   Posit - [video](#) - [slide deck](#)
+-   VS Code - [video](#) - [slide deck](#)
+-   Parallelism - [video](#) - [materials](Parallelism.qmd)

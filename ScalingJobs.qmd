@@ -1,0 +1,133 @@
+---
+author: "Sean Taylor, Marc Carlson, Glenn Morton, Lindsay Clark, Neerja Katiyar"
+date: "last-modified"
+output:
+  html_document: 
+    toc: yes
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+always_allow_html: true
+---
+# Scaling {#sec-scaling}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE, include=TRUE)
+library(knitr)
+library(kableExtra)
+```
+
+
+With a firm handle on how to write scripts, we can take advantage of one of the main strengths of the HPC: the ability to run several similar jobs in parallel. If one has a batch of samples that need to be similarly processed, we can employ Slurm scripts to process each sample as a separate job, and then run those jobs in parallel. Not only does this significantly improve the time to process, but if employed correctly, this allows one to significantly scale your experiments in a practical way.
+
+This chapter covers several strategies for scaling your work
+
+## Manual parallelization
+
+One of the simplest ways to achieve parallelization is to simply generate a series of scripts, one for each sample to be processed.\
+BE AWARE, that if you take this approach that maintenance and sustainability of your projects will be a lot of work. It is recommended that you consider using Pipelining tools such as Nextflow to make your future lives much easier. See below @sec-pipelining-tools
+
+For example, if you had a data set that included 4 samples, you might generate four Slurm scripts and then execute them as follows:
+
+```{bash}
+export EMAIL={{< var path.exampleemail >}}
+export ACCT=cpu-core-sponsored
+
+sbatch --partition=cpu-core-sponsored --account=$ACCT --mail-user=$EMAIL scripts/rnaseq_norm1.sh
+
+sbatch --partition=cpu-core-sponsored --account=$ACCT --mail-user=$EMAIL scripts/rnaseq_norm2.sh
+
+sbatch --partition=cpu-core-sponsored --account=$ACCT --mail-user=$EMAIL scripts/rnaseq_tumor1.sh
+
+sbatch --partition=cpu-core-sponsored --account=$ACCT --mail-user=$EMAIL scripts/rnaseq_tumor2.sh
+```
+
+Each call to sbatch is a separate job that gets added to the queue. Each job runs independently and in parallel.
+
+## Job arrays {#sec-scaling_arrays}
+
+When you need to run a large number of jobs that are computationally identical but differ only by an input parameter or a file, a job array is an efficient method. Instead of submitting thousands of individual scripts, a job array allows you to submit a single script that Slurm will run multiple times, each with a unique task ID. This simplifies management and improves scheduler efficiency.
+
+### What is a Job Array?
+
+A job array is a collection of jobs, all of which share the same script and resource requirements. Each individual job within the array is called a task. Slurm manages the entire array as a single entity, but each task is executed as an independent job.
+
+### Key Job Array Directives
+
+The primary directive for creating a job array is `--array`.
+
+`--array=0-9`: This creates a job array with 10 tasks, with task IDs from 0 to 9.
+
+`--array=1,3,5`: This creates a job array with three tasks, with specific task IDs 1, 3, and 5.
+
+`--array=1-100:10`: This creates a job array with task IDs from 1 to 100, stepping by 10 (i.e., 1, 11, 21, etc.).
+
+Within your job script, Slurm provides special environment variables to identify each unique task:
+
+`$SLURM_ARRAY_JOB_ID`: The main job ID of the entire array. This is the ID you get when you first submit the job.
+
+`$SLURM_ARRAY_TASK_ID`: The unique task ID of the current job within the array. This is the variable you'll use to differentiate tasks, often by using it to select an input file or set a parameter.
+
+### Example: Using a Job Array
+
+Imagine you have 10 input data files named data_0.txt, data_1.txt, ..., data_9.txt, and you need to run the same analysis program on each file. Here is how you would use a job array to do this.
+
+1.  Create the Batch Script Save the following content as a file named my_array_job.sh.
+
+``` bash
+#!/bin/bash
+#SBATCH --job-name=my_array_job
+#SBATCH --account=cpu-core-sponsored
+#SBATCH --partition=cpu-core-sponsored
+#SBATCH --time=0-01:00:00
+#SBATCH --nodes=1
+#SBATCH --array=0-9
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=7.5G
+#SBATCH --output=slurm_array_%A_%a.out
+#SBATCH --error=slurm_array_%A_%a.err
+
+# Load a software module or conda environment if needed
+source ~/.bashrc
+conda activate my_env
+
+# Define the input file based on the unique task ID
+INPUT_FILE="data_${SLURM_ARRAY_TASK_ID}.txt"
+OUTPUT_FILE="results_${SLURM_ARRAY_TASK_ID}.txt"
+
+# Run your program
+echo "Starting job array task with ID: $SLURM_ARRAY_TASK_ID"
+python analysis_program.py --input "$INPUT_FILE" --output "$OUTPUT_FILE"
+
+echo "Task completed."
+```
+
+2.  Submit the Job Submit the script to the queue with a simple `sbatch` command.
+
+``` bash
+sbatch my_array_job.sh
+```
+
+3.  Monitor and Analyze the Output After submission, `sbatch` will return a single job ID for the entire array (e.g., `Job ID 12345`). You can monitor the status of the entire array or a specific task.
+
+To check the status of the entire array: `squeue -j 12345`
+
+To check the status of a specific task (e.g., task ID 5): `squeue -j 12345_5`
+
+The output files will be named according to the `--output` and `--error` directives. The special format specifiers `%A` and `%a` automatically get replaced with the job ID and task ID, respectively. In our example, the output files would be named `slurm_array_12345_0.out`, `slurm_array_12345_1.out`, and so on. This makes it easy to find the logs for each individual task.
+
+### Best Practices
+
+-   Use job arrays for parallel tasks: Job arrays are best suited for tasks that can run independently of each other. Avoid using them for tasks that have dependencies on one another.
+
+-   Keep a tight loop: The job script should be as simple as possible, with the core logic handling the unique task ID to select input and output files.
+
+-   Manage output: Use the `%A` and `%a` format specifiers in your `--output` and `--error` directives to automatically generate unique filenames for each task's logs. \
+
+
+## Pipelining tools {#sec-pipelining-tools}
+
+In many cases, one will have a fairly established workflow that one will want to reuse on many different samples. There are wonderful tools available that allow you to create custom pipelines. These tools simplify and automate the task of generating and submitting parallel jobs by interfacing with schedulers such as slurm for you.
+
+-   [Snakemake](https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html) is a popular tool based on python. It is light weight, easy to learn and deploy, and takes advantage of conda or containers for managing your software environments. See an [example Snakemake workflow for RNASeq]({{< var link.snakemake_rnaseq >}}) that we have deployed here at Company.
+
+-   [Nextflow](https://www.nextflow.io/docs/latest/getstarted.html) is another popular tool. While it has a steeper learning curve than Snakemake, it is more robust, portable and reproducible and so it is becoming quite popular. See @sec-nextflow for more details on using in our environment.

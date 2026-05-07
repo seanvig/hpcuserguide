@@ -1,0 +1,10 @@
+# using `\-` escape to prevent bullet points in the HTML table
+octal	binary	File Mode
+"0"	"000"	"\- \- \-"
+"1"	"001"	"\- \- x"
+"2"	"010"	"\- w \-"
+"3"	"011"	"\- w x"
+"4"	"100"	"r \- \-"
+"5"	"101"	"r \- x"
+"6"	"110"	"r w \-"
+"7"	"111"	"r w x"

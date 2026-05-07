@@ -1,0 +1,8 @@
+option	what comes after the option	What this does.
+"-X"	""	"Allows X-windows output to be tunneled through ssh."
+"-l"	"cput=H:MM:SS"	"Specify the CPU time that you job will require in hours:minutes:seconds format."
+"-l"	"walltime=H:MM:SS"	"Specify the walltime that your job willl require in hours:minutes:seconds format."
+"-l"	"nodes=node##"	"For single processor jobs, request a specific node by name (this is NOT a recommended option)."
+"-l"	"nodes=#:ppn=2"	"For multiprocessor jobs, request hardware resources as number of nodes and ppn for the number of cores (remember each node has 2 CPUs)."
+"-l"	"pmem=#gb"	"Use this if you job consumes a lot of memory (RAM)."
+"-l"	"place=scatter"	"For multiprocessor jobs, spread individual tasks over as many nodes as possible"

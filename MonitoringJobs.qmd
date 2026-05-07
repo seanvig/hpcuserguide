@@ -1,0 +1,184 @@
+---
+author: "Sean Taylor, Marc Carlson, Glenn Morton, Lindsay Clark, Neerja Katiyar"
+date: "last-modified"
+output:
+  html_document: 
+    toc: yes
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+always_allow_html: true
+---
+
+# Monitoring Slurm Jobs {#sec-monitoring}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE, include=TRUE)
+library(knitr)
+library(kableExtra)
+```
+
+Slurm provides several tools for monitoring, in-depth analysis and control over your jobs, you can use `sacct`, `seff`, and `scontrol.` Each command provides a different type of information.
+
+-   `squeue`: Use this to see the current status of jobs. It shows jobs that are either running, pending, or in the process of completing. It does not show historical data for finished jobs.
+
+-   `sacct`: Use this to get historical data for completed jobs. This command is useful for checking the exit code of a job, its start and end times, and which nodes it ran on. Use `sacct -e` to see all of the fields you can view.
+
+-   `seff`: Use this to get a summary of job efficiency. This analyzes a finished job's resource usage (e.g., CPU, memory) and provides a percentage of efficiency. This is a crucial tool for optimizing your job submissions.
+
+-   `scontrol`: Use this to manage and inspect jobs in more detail. You can use scontrol to get a verbose description of a job's parameters or even to modify an active job.
+
+## Monitoring queued and running jobs
+
+Once you have submitted a job, you can use the `squeue` command to check its status. This command provides a real-time snapshot of all jobs currently in the Slurm queue.
+
+### Example commands
+
+-   To check the status of a specific job that is currently running:
+
+```{bash}
+squeue -j <job_id>
+```
+
+-   You can view all jobs on the system by simply running:
+
+```{bash}
+squeue
+```
+
+-   To filter the results and see only your jobs, use the `-u` flag with your username:
+
+```{bash}
+squeue -u <your_username>
+```
+
+The output of squeue will show important information about your jobs, including their **JOBID, PARTITION, NAME, STATE** (e.g., `PENDING`, `RUNNING`, `COMPLETING`), and the **NODELIST(REASON)**. The reason a job is pending is particularly useful for debugging, as it might indicate that it is waiting for a specific resource.
+
+## Analyzing past jobs
+
+`sacct` is for **job accounting and historical data**. It queries the Slurm accounting database and provides detailed information about **completed, canceled, or failed jobs**. Unlike `squeue`, which shows a live view, `sacct` gives you a permanent record of a job's resource usage, start and end times, exit code, and more.
+
+### Example Commands
+
+-   To check the status of a completed job (e.g., with ID 12345):
+
+```{bash}
+sacct -j 12345
+```
+
+-   To see when a job started and ended:
+
+```{bash}
+sacct -j 12345 --format=JobID,Start,End
+```
+
+-   To see maximum memory used (MaxRSS) and elapsed time:
+
+```{bash}
+sacct -j 12345 --format=JobID,JobName,MaxRSS,Elapsed,State
+```
+
+-   To see details about individual jobs in an array:
+
+```{bash}
+sacct -j <jobid> --array
+```
+
+-   To see details about all of your jobs since a certain timepoint:
+
+```{bash}
+sacct -u <userid> -S 2024-01-15
+```
+
+### Additional parameters to use with sacct:
+
+<https://slurm.schedmd.com/sacct.html>
+
+### Job states
+
+```{r, echo=FALSE, eval=TRUE}
+filePath <- "tables/job_states.txt"
+t1 <- read.table(file=filePath, sep="\t", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+kable(t1, align = 'l', caption='Flags to learn about job status') %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE, html_font = "\"Trebuchet MS\", verdana, sans-serif")
+```
+
+Table courtesy of <https://hpc.nmsu.edu/discovery/slurm/commands/#_the_squeue_command>
+
+## Efficiency reports
+
+`seff` is a convenient **job efficiency report** tool. It's a script that uses data from the Slurm accounting database (similar to `sacct`) to provide a clean, easy-to-read summary of a **completed job's efficiency**. It calculates metrics like CPU and memory efficiency by comparing requested resources to actual usage.
+
+The output of `seff` may vary from system to system. Here are some key fields that are likely common:
+
+-   **Job ID:** The unique identifier of the job.
+
+-   **State:** Indicates whether the job completed successfully, failed, or is still running.
+
+-   **Nodes:** The number of nodes allocated to the job.
+
+-   **Cores per node:** The number of cores allocated per node.
+
+-   **CPU Utilized:** The total CPU time used by the job.
+
+-   **CPU Efficiency:** The percentage of allocated CPU time that was actually used.
+
+-   **Job Wall-clock time:** The total time the job ran.
+
+-   **Memory Utilized:** The amount of memory used by the job, often reported as a peak value.
+
+-   **Memory Efficiency:** The percentage of allocated memory that was actually used. 
+
+See @sec-optimization for more details on how to use this information to fine tune your jobs.
+
+### Example commands
+
+-   To get an efficiency report for a finished job showing the percentage of CPU and memory used, helping you determine if you over-requested or under-requested resources:
+
+```{bash}
+seff 12345
+```
+
+## Detailed job information
+
+`scontrol` is a versatile command for **viewing and modifying Slurm state**. It can be used by both users and administrators to get highly detailed information about jobs, nodes, and partitions. For a regular user, the command `scontrol show job` is particularly useful for inspecting the full details of a specific job, including all its requested parameters.
+
+**Important Notes:**
+
+-   `scontrol show job` primarily works for pending and running jobs.
+
+-   For jobs that completed more than a certain time ago (e.g., 30 minutes, depending on configuration), their records might be removed from Slurm's memory. In such cases, the `sacct` command is used to retrieve historical job information from the Slurm database.
+
+### Example commands
+
+-   To get a detailed, verbose output of a job's parameters (e.g., for an active job), including its full submission script contents and requested resources:
+
+```{bash}
+scontrol show job <job_id>
+```
+
+-   To show even more detailed information, including the job submission script (if available):
+
+```{bash}
+scontrol -dd show job <job_id>
+```
+
+## Canceling a job
+
+-   To terminate a running or pending job, use the `scancel` command:
+
+```{bash}
+scancel <job_id>
+```
+
+-   To cancel one job within an array:
+
+```{bash}
+scancel <jobid>_5
+```
+
+-   To cancel a series of jobs in an array:
+
+```{bash}
+scancel <jobid>_[2-8]
+```

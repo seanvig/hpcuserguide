@@ -1,0 +1,541 @@
+---
+title: "Using Containers: Apptainer and Docker"
+author: "Sean Taylor, Glenn Morton, Lindsay Clark, Marc Carlson"
+date: "last-modified"
+format: html
+execute:
+  eval: false
+  echo: true
+---
+
+# Using Containers: Apptainer and Docker {#sec-containers}
+
+## Using Containers on Sasquatch {#sec-containers_using}
+
+You may have heard of "containerization" of software. Essentially, you download a very lightweight virtual machine that already has the software installed. To the user, running a container will behave like having an independent computing system, with its own operating system and software configuration, even though the container is simply an application running on a host system. Like modules and conda environments, software containers address the problem of managing the execution environment for one or several interdependent programs.
+
+Although Docker is probably the most well-known container system, it is not installed in a typical HPC environment, including ours, due to security concerns. A newer system, called [Apptainer](https://apptainer.org/) (previously called `Singularity`), has been developed at the Lawrence Berkeley National Laboratory, specifically intended for HPC environments, and which uses a stricter security model. Apptainer has its own container format, but Docker containers can be easily converted to Apptainer containers.
+
+Advantages of containerization over conda:
+
+-   Don't have to spend a bunch of compute time "solving the environment" to get all the dependencies right
+-   Environment is more reproducible across platforms
+
+Disadvantages of containerization as compared to conda:
+
+-   Can't install additional tools into a container, whereas you can keep adding packages to a conda environment
+-   By default Apptainer can only see your home directory, so you will need to do an extra step if it needs to see additional directories on Sasquatch like those in `/data/hps/assoc/`.
+
+### Loading Apptainer and downloading images
+
+Apptainer is installed on Sasquatch and should be on your path without you needing to do anything.
+
+I recommend keeping all containers pertaining to a project in the `containers` directory of the corresponding association. Then `cd` into that directory to download stuff there.
+
+``` bash
+ASSOC='{{< var path.examplelab >}}' # edit to point to your association
+
+cd $ASSOC/container
+```
+
+The first place I will look for images is [Galaxy](https://depot.galaxyproject.org/singularity/), since they are already in Singularity/Apptainer format there. I can go down the list, find Slivar, and copy the URL for the most recent version. Then I can download it with `apptainer pull`. If the URL has `%3A` in it, you can change that to `:`.
+
+``` bash
+apptainer pull https://depot.galaxyproject.org/singularity/slivar:0.3.0--h4e814b3_2
+```
+
+I can see where it downloaded:
+
+``` bash
+ls -lh $ASSOC/container
+```
+
+I can check that the container works:
+
+``` bash
+apptainer exec $ASSOC/container/slivar:0.3.0--h4e814b3_2 slivar --help
+```
+
+If there isn't an Apptainer/Singularity container or it isn't working for some reason, I then check for a Docker container. There are more Docker containers out there than Apptainer containers, and the software developer is more likely to directly maintain the Docker container. The only downside from our end is that there will be a conversion step to turn a Docker container into an Apptainer container.
+
+If I Google "slivar docker" I find <https://hub.docker.com/r/brentp/slivar>, which is great because the user name is the same as the GitHub user name, indicating that the developer of Slivar made the container himself and would (probably) have done a good job getting all of the dependencies into it. If I click "Tags" I see tags that let me specify which version to download. I can download this Docker container with `apptainer pull`.
+
+``` bash
+apptainer pull docker://brentp/slivar:v0.3.0
+```
+
+Then look at the file and test that it works:
+
+``` bash
+ls -lh $ASSOC/container
+
+apptainer exec $ASSOC/container/slivar_v0.3.0.sif slivar --help
+```
+
+You can learn more about Apptainer [here](https://apptainer.org/docs/user/latest/).
+
+### Running software in an Apptainer container
+
+If you want to open your container with an interactive prompt, you can do `apptainer shell`.
+
+``` bash
+apptainer shell $ASSOC/container/slivar:0.3.0--h4e814b3_2
+```
+
+You will now have a prompt that says `Apptainer>`, and can run any commands that are installed in the container. You will not have access to software that isn't in this environment, for example anything you loaded with `module load`. Sometimes the images are pretty slimmed down and you might find that you don't even have some basic commands like `less`.
+
+If you use `cd` and `ls` to explore the file system, you will see that it is like you are on an entirely different computer, except your home directory is the one you have on Sasquatch.
+
+``` bash
+ls ~/
+
+ls /usr/local/bin/
+
+slivar duo-del --help
+```
+
+When you are done with your session in the container, type `exit` and hit enter to go back to your bash prompt on Sasquatch.
+
+How would you access data not in your home directory? You can use the `--bind` argument to add one or more directories. For example, here I take our folder of reference genomes on `/data/hps/assoc/public/bioinformatics/annotations` and put them into a directory named `/mnt` on the container. You may also want to mount your association directory if that is where your data is.
+
+``` bash
+REFS="{{< var path.bioinformatics >}}/annotations"
+
+apptainer shell --bind $REFS:/mnt,$ASSOC:/mylab \
+$ASSOC/container/slivar:0.3.0--h4e814b3_2
+
+ls /mnt
+ls /mylab
+
+exit
+```
+
+Typically, we don't use `apptainer shell` except for debugging and trying things out. Once you know what you can do, you can launch the container, run your command, and exit the container all in one step with `apptainer exec`. Here is an example command using BCFtools to predict coding consequences of variants.
+
+``` bash
+cd ~
+# Download an example VCF
+git clone ssh://git@company-domain:7999/rp/rare-disease-wf.git
+
+# Point to container location
+export ASSOC='{{< var path.examplelab >}}'
+
+apptainer pull --dir $ASSOC/container https://depot.galaxyproject.org/singularity/bcftools:1.20--h8b25389_0
+
+# Run container
+export REFS='{{< var path.bioinformatics >}}/annotations/Homo_sapiens/Ensembl/GRCh37'
+
+apptainer exec --bind $REFS:/mnt \
+  $ASSOC/container/bcftools:1.20--h8b25389_0 \
+  bcftools csq \
+    --unify-chr-names 1 \
+    --local-csq \
+    --fasta-ref /mnt/Sequence/WholeGenomeFasta/Homo_sapiens.GRCh37.dna.primary_assembly.fa \
+    --gff-annot /mnt/Annotation/Genes/Homo_sapiens.GRCh37.87.gff3 \
+    -O v -o ~/rare-disease-wf/testdata/Ashkenazim_GIAB_small.glnexus.csq.vcf \
+    ~/rare-disease-wf/testdata/Ashkenazim_GIAB_small.glnexus.vcf
+```
+
+### Submit a SLURM job that uses an Apptainer container
+
+Detailed information on how to run SLURM jobs are in @sec-submittingjobs . Here is an example using apptainer.
+
+First, idenfify the name of your `account` and `partition` (also known as `queue`) you have access to use.
+
+``` bash
+sshare --format=Account,User,Partition --parsable
+```
+
+If needed, change `--partition=cpu-core-sponsored` to `--partition=my-partition-name`. Do the same for the account. Note also that the script below assumes you have saved the VCF to your association directory rather than your home directory, since you should be doing most of your work in your association directory.
+
+``` bash
+#!/bin/bash
+#SBATCH --partition=cpu-core-sponsored
+#SBATCH --account=cpu-core-sponsored
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --nodes=1
+#SBATCH --mem=16G
+#SBATCH --time=0-24:00:00
+
+ASSOC="{{< var path.examplelab >}}" 
+IDIR="$ASSOC/container"
+RDIR="{{< var path.bioinformatics >}}/annotations/Homo_sapiens/Ensembl/GRCh37"
+VDIR="$ASSOC/user/mmouse/my_experiment"
+ 
+apptainer exec --bind $RDIR:/mnt,$VDIR:/mnt2 \
+  $IDIR/bcftools:1.20--h8b25389_0 \
+  bcftools csq \
+    --unify-chr-names 1 \
+    --local-csq \
+    --fasta-ref /mnt/Sequence/WholeGenomeFasta/Homo_sapiens.GRCh37.dna.primary_assembly.fa \
+    --gff-annot /mnt/Annotation/Genes/Homo_sapiens.GRCh37.87.gff3 \
+    -O v -o /mnt2/rare-disease-wf/testdata/Ashkenazim_GIAB_small.glnexus.csq.vcf \
+    /mnt2/rare-disease-wf/testdata/Ashkenazim_GIAB_small.glnexus.vcf
+```
+
+Make a new slurm script file using any editor, for example with `nano`. Copy the contents above into the text editor, save and quit. Then run the slurm job script.
+
+``` bash
+cd {{< var path.examplelabuser >}}/my_experiment
+nano bcftools.slurm
+sbatch bcftools.slurm
+```
+
+### Additional help
+
+RSC hosted a [lunch and learn](lunch_and_learn.qmd) that contains more detail on best practices building and maintaining your conda environments that we highly recommend you review: [video](#) - [slide deck](#)
+
+## Building your own Apptainer containers {#sec-containers_building}
+
+You may find yourself wanting to build your own container, perhaps with your own custom software installed, or perhaps with a combination of software that doesn't already exist in a container. Some biotech companies don't distribute containerized versions of their software for intellectual property reasons, but you can still make a container for your own use.
+
+For security reasons, you cannot build a Docker or Apptainer/Singularity container on our HPC, even though you can run one. This means you have to install Apptainer on your local machine, and possibly Docker as well. Once the Apptainer image is built, you can upload it to your home or association storage in order to use it. Alternatively, you can contact Research Scientific Computing for help building custom container images.
+
+In addition to these instructions, we have an older [blog post](#) describing how to build Singularity containers, which is especially pertinent if you are running Windows.
+
+### Do I need Docker?
+
+In this tutorial we start with a Dockerfile and convert the subsequent docker image to an apptainer image. It is possible to build an Apptainer container directly and skip the conversion step from Docker. However, Docker is more of an industry standard, so having a Dockerfile describing your container may make it more shareable with colleagues.
+
+Note that you should not install Docker Desktop, because Company is not legally able to use the free license for that software. Instead, install the command-line Docker.
+
+### Installation of Docker/Apptainer for Windows WSL
+
+#### Docker
+
+If you are on Windows, you will need Windows Subsystem for Linux (WSL) in order to run Docker and Apptainer on your local machine. With WSL, you can run Linux on your Windows machine, and it is officially supported by Microsoft. [Instructions for installing WSL](https://learn.microsoft.com/en-us/windows/wsl/install) are on Microsoft's website. You should install a recent version of Ubuntu.
+
+Your Ubuntu installation on WSL will need Company SSL certificates in order to access the internet. Currently a certificate bundle is available on a [Bitbucket](#). Download the bundle from [this link](#), saving as `SCHCABundleAll.crt`.
+
+In the Windows File Explorer, if you scroll down to the bottom of the left sidebar you should be able to find your Linux file system. Go into your Ubuntu installation and copy the cert bundle file to `/usr/local/share/ca-certificates/`. Then run
+
+``` bash
+sudo update-ca-certificates
+```
+
+Then edit your `~/.bashrc` to contain the lines
+
+``` bash
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+```
+
+and do
+
+``` bash
+source ~/.bashrc
+```
+
+As of October 2023, I was able to install Docker on WSL2 using these [instructions](https://nickjanetakis.com/blog/install-docker-in-wsl-2-without-docker-desktop).
+
+From the WSL2 prompt, do:
+
+``` bash
+cd ~
+
+curl -fsSL https://get.docker.com -o get-docker.sh
+
+sudo sh get-docker.sh
+```
+
+Ignore the suggestion to get Docker Desktop, and wait for the script to finish.
+
+Then do `nano ~/.profile` (or use your preferred text editor) and add the lines
+
+``` bash
+if grep -q "microsoft" /proc/version > /dev/null 2>&1; then
+    if service docker status 2>&1 | grep -q "is not running"; then
+        wsl.exe --distribution "${WSL_DISTRO_NAME}" --user root \
+            --exec /usr/sbin/service docker start > /dev/null 2>&1
+    fi
+fi
+```
+
+Close WSL2 and open it again. Now if you do `ps aux | grep docker` you will see something like
+
+```         
+root      8946  2.6  0.3 2053360 85472 ?       Sl   07:27   0:00 /usr/bin/dockerd -p /var/run/docker.pid
+root      8960  1.2  0.1 1799320 46192 ?       Ssl  07:27   0:00 containerd --config /var/run/docker/containerd/containerd.toml
+mmouse    9068  0.0  0.0   8164   716 pts/0    S+   07:27   0:00 grep --color=auto docker
+```
+
+and if you do `docker run hello-world` it will pull an image and then print a message that the installation is working correctly.
+
+#### Apptainer
+
+Before installing Apptainer on your local machine, if you are on Windows you will need to follow the above instructions for installing WSL. At this time, we are having some trouble getting Apptainer installed onto Company imaged Macs, so if you are using a Mac you may be better off contacting us about using our server.
+
+[Full installation instructions](https://apptainer.org/docs/admin/1.1/installation.html) are available in the Apptainer documentation, although you may not find them very approachable.
+
+In your Ubuntu installation on WSL2, you can run:
+
+``` bash
+sudo add-apt-repository -y ppa:apptainer/ppa
+sudo apt update
+sudo apt install -y apptainer
+```
+
+Now test the installation.
+
+``` bash
+cd ~
+mkdir -p apptainer
+cd apptainer
+
+apptainer pull https://depot.galaxyproject.org/singularity/bcftools:1.20--h8b25389_0
+
+apptainer exec bcftools:1.20--h8b25389_0 bcftools csq --help
+```
+
+### Installation of Docker/Apptainer for MacOS
+
+#### Docker
+
+The prerequisite is to install [`homebrew`](https://docs.brew.sh/Installation) package managed for macOS. These directions worked as of May 2023 by following this [post](https://dev.to/elliotalexander/how-to-use-docker-without-docker-desktop-on-macos-217m). Installing homebrew is out of scope this document. Contact [RSC](#) for more information if you need to have homebrew installed and you do not have admin privileges.
+
+Install docker and [colima](https://github.com/abiosoft/colima) which creates a docker virtual machine (VM) by default using homebrew.
+
+``` bash
+brew install docker
+brew install docker-credential-helper
+brew install colima
+```
+
+Create a `.docker` directory, a directory for SSL certificates, and a config file for your docker installation. These instructions assume that you will be connected to the Company network by VPN or on-site.
+
+Copy the following into the config.json file, such as using `nano`.
+
+```         
+{
+    "auths": {},
+    "credsStore": "osxkeychain",
+    "currentContext": "colima"
+}
+```
+
+``` bash
+mkdir -p ~/.docker/certs.d
+nano ~/.docker/config.json
+```
+
+Get the SSL certificate files. Clone (copy) these certificates into a separate directory.
+
+Copy the certificate files into the `~/.docker/certs.d` directory. See these for information: [link1](https://docs.docker.com/desktop/faqs/macfaqs/#add-client-certificates) and [link2](https://docs.docker.com/desktop/faqs/windowsfaqs/#how-do-i-add-client-certificates) and [link](https://docs.docker.com/engine/security/certificates/)
+
+``` bash
+cd ~
+git clone ssh://git@company_dopmain:7999/ec/certificates.git
+cp ~/certificates/*.crt ~/.docker/certs.d
+```
+
+Confirm that it works by starting the VM and running a few docker commands.
+
+``` bash
+colima start
+docker run hello-world
+docker info
+```
+
+> Hello from Docker! This message shows that your installation appears to be working correctly.
+
+> To generate this message, Docker took the following steps: 1. The Docker client contacted the Docker daemon. 2. The Docker daemon pulled the "hello-world" image from the Docker Hub. (arm64v8) 3. The Docker daemon created a new container from that image which runs the executable that produces the output you are currently reading. 4. The Docker daemon streamed that output to the Docker client, which sent it to your terminal.
+
+#### Apptainer
+
+If colima was already installed (see above) for docker, then `lima` utility is already present for apptainer. Lima "launches Linux virtual machines with automatic file sharing and port forwarding (similar to WSL2)."
+
+You can access apptainer by using the following:
+
+``` bash
+limactl start template://apptainer
+limactl shell apptainer
+apptainer version
+```
+
+Then check that you can pull images from public repositories and run and example. The default writable directory is ONLY `/tmp/lima` so it must be specified in the `pull command`. Mounting additional host directories, like your local home/ or desktop/ directories, may be possible as described [here](https://lima-vm.io/docs/config/mount/).
+
+``` bash
+apptainer pull --dir /tmp/lima  docker://alpine
+apptainer exec /tmp/lima/alpine_latest.sif echo "hello world"
+exit # to exit the apptainer virtual machine
+```
+
+You may occasionally run into issues with M1/M2 versus the intel chip Macbooks. You will receive an error like this "FATAL: While checking container encryption: could not open image /tmp/lima/lolcow_latest.sif: the image's architecture (amd64) could not run on the host's (arm64)" even after specifying an architecture in the `apptainer pull` command.
+
+Checking the type of image architecture will help you know if that's the case (see below) to compare lolcow and alpine OS images.
+
+In this case, [lolcow software image](https://apptainer.org/docs/user/latest/quick_start.html#executing-commands) does not appear to support M1/M2 chips, so simply find a different container of the same software or you can make your own image.
+
+``` bash
+mmmouse@lima-apptainer:$ apptainer pull --dir /tmp/lima docker://ghcr.io/apptainer/lolcow 
+mmmouse@lima-apptainer:$ apptainer sif list /tmp/lima/lolcow_latest.sif 
+------------------------------------------------------------------------------
+ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
+------------------------------------------------------------------------------
+1    |1       |NONE    |32176-32226               |Def.FILE
+2    |1       |NONE    |32226-36443               |JSON.Generic
+3    |1       |NONE    |36443-36597               |JSON.Generic
+4    |1       |NONE    |36864-74985472            |FS (Squashfs/*System/amd64)
+
+mmouse@lima-apptainer:$ apptainer sif list /tmp/lima/alpine_latest.sif 
+------------------------------------------------------------------------------
+ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
+------------------------------------------------------------------------------
+1    |1       |NONE    |32176-32208               |Def.FILE
+2    |1       |NONE    |32208-36133               |JSON.Generic
+3    |1       |NONE    |36133-36228               |JSON.Generic
+4    |1       |NONE    |36864-3272704             |FS (Squashfs/*System/arm64)
+```
+
+### SSL certificates
+
+The container will be its own little pseudo operating system, and it may also need the certs. After that, `update-ca-certificates` can be run while building the container. In some cases you may be able to build a container without the certs, but I have found e.g. for installing R packages on a container, the certs are necessary.
+
+**Use caution when sharing a Docker container with Company SSL certificates.** The certs themselves are public keys, so it is okay if you upload your Docker image to Dockerhub with the certs on it. However, if you do any setup with openssl, you will be generating private keys that should definitely not be shared on Dockerhub or anywhere else outside of our network. If the container is just for your own use, you will be able to send it directly to our HPC without needing to put it on Dockerhub.
+
+### Building with Docker
+
+#### Write Dockerfile
+
+Let's use [this Dockerfile for BCFtools](https://github.com/genome/docker-bcftools/blob/master/Dockerfile) as an example. The base image is Ubuntu ("focal" refers to version 20.04). The Dockerfile maintainer is listed, as well as a name and version number for the container. There are `RUN` lines with bash commands to be run, `ENV` lines with environmental variables to set, `WORKDIR` lines to indicate working directories for the `RUN` lines, and an (optional) `ENTRYPOINT` line to indicate a command that should always be run when the Docker container is run.
+
+[Detailed information about Dockerfiles](https://docs.docker.com/engine/reference/builder/) is available with their documentation.
+
+Let's build that image on WSL2 or your Mac Terminal. For this example we will download the Dockerfile then edit it. We will also copy the certs to the working directory with the Dockerfile.
+
+For WSL users, you should copy all the certs from `/usr/local/share/ca-certificates/` on WSL to the same path in your **Ubuntu container**. For MacOS, you will copy the certs from the location where the certificates repo was cloned (See above for `git clone ssh://git@company-domain:7999/ec/certificates.git`) into `/usr/local/share/ca-certificates/` in the **Ubuntu container**.
+
+The location of the certificates files is dependent on the container's operating system, like [Ubuntu](https://ubuntu.com/server/docs/install-a-root-ca-certificate-in-the-trust-store). For other OSes, look at their documentation for the appropriate location.
+
+``` bash
+cd ~
+mkdir BCFtools_docker
+cd BCFtools_docker
+
+CERTS_LOC="/usr/local/share/ca-certificates"
+#for MacOS in this tutorial use this or the location you cloned the certs. 
+# CERTS_LOC=$HOME/certificates 
+cp $CERTS_LOC/*.crt .
+wget https://raw.githubusercontent.com/genome/docker-bcftools/master/Dockerfile
+nano Dockerfile
+```
+
+Edit the Dockerfile to add in the certs. Note that I also have to install `ca-certificates` before running `update-ca-certificates`. I will also add `--no-check-certificate` to the `wget` command. Lastly I'm going to delete the `ENTRYPOINT` line since I'm not sure how that will work when converted to Apptainer.
+
+```         
+FROM ubuntu:focal
+MAINTAINER Thomas B. Mooney <tmooney@genome.wustl.edu>
+
+LABEL \
+  version="1.12" \
+  description="bcftools image for use in Workflows"
+
+RUN apt-get update && apt-get install -y \
+  bzip2 \
+  g++ \
+  libbz2-dev \
+  libcurl4-openssl-dev \
+  liblzma-dev \
+  make \
+  ncurses-dev \
+  wget \
+  zlib1g-dev
+
+RUN apt-get update && apt-get install -y ca-certificates
+COPY *.crt /usr/local/share/ca-certificates/
+RUN update-ca-certificates
+
+ENV BCFTOOLS_INSTALL_DIR=/opt/bcftools
+ENV BCFTOOLS_VERSION=1.12
+
+WORKDIR /tmp
+RUN wget https://github.com/samtools/bcftools/releases/download/$BCFTOOLS_VERSION/bcftools-$BCFTOOLS_VERSION.tar.bz2 && \
+  tar --bzip2 -xf bcftools-$BCFTOOLS_VERSION.tar.bz2
+
+WORKDIR /tmp/bcftools-$BCFTOOLS_VERSION
+RUN make prefix=$BCFTOOLS_INSTALL_DIR && \
+  make prefix=$BCFTOOLS_INSTALL_DIR install
+
+WORKDIR /
+RUN ln -s $BCFTOOLS_INSTALL_DIR/bin/bcftools /usr/bin/bcftools && \
+  rm -rf /tmp/bcftools-$BCFTOOLS_VERSION
+
+ENTRYPOINT ["/usr/bin/bcftools"]
+```
+
+Then run `docker build` and add a tag the Docker image. Replace "username" with your dockerhub username, GitHub username, or any other identifier you want to use.
+
+``` bash
+USERNAME="username"
+docker build -t $USERNAME/bcftools_test:latest .
+```
+
+Once this is done, the image you made should be visible in the list generated by `docker image ls`. I can launch the container with `docker run`. Once we know it works, save the image as a tar file for later conversion to apptainer image.
+
+``` bash
+docker run --interactive --tty --entrypoint /bin/bash bcftools_test:latest
+docker save $USERNAME/bcftools_test:latest -o bcftools_test.latest.tar
+```
+
+Trying a command line `bcftools csq --help` within the container will confirm that the software is there. Then I can type `exit` when I am done.
+
+#### Convert Docker to Apptainer (WSL)
+
+Now I can turn my Docker image into an Apptainer image by building an Apptainer image from the Docker image. And test to confirm that it works:
+
+``` bash
+cd ~/apptainer
+
+sudo apptainer build bcftools_test.sif docker-daemon://$USERNAME/bcftools_test:latest
+apptainer shell bcftools_test.sif
+bcftools csq --help
+
+exit
+```
+
+#### Convert Docker to Apptainer (Mac OS)
+
+Convert the tar image file to the singularity/apptainer image file `.sif`. The lima VM only writes to `/tmp/lima/` so be sure to specify that in the output sif image file name.
+
+Then copy the `.sif` image from the temp location to the current working directory.
+
+``` bash
+cd ~/BCFtools_docker
+
+# restart apptainer VM if on mac, if needed
+limactl start template://apptainer
+limactl shell apptainer
+apptainer build /tmp/lima/bcftools_test.latest.sif docker-archive://bcftools_test.latest.tar
+# exit the apptainer VM
+exit
+
+cp /tmp/lima/bcftools_test.latest.sif  .
+```
+
+If on a MacOS, The docker and apptainer VMs are running the background (using up RAM and other resources) until they are stopped/killed.
+
+``` bash
+limactl list # list running VMs
+limactl stop apptainer  
+limactl delete apptainer
+
+colima list # list running VMs
+colima stop 
+colima delete
+```
+
+#### Saving Images
+
+Now you can upload the `.sif` file to the HPC and use it there. I suggest keeping all of your Apptainer image files in the `container` directory in the appropriate association on the HPC. Dockerfiles and any notes on generating the images can be kept on Bitbucket or somewhere else that is backed up.
+
+See the section on data transfer for more [information](DataStorageTransfer.qmd).
+
+### Building with Apptainer
+
+Apptainer has a [helpful tutorial](https://apptainer.org/docs/user/latest/quick_start.html#build-images-from-scratch) on building containers from scratch. There are a couple options:
+
+-   Writeable sandbox - The directory structure of the entire container is accessible from your normal file system, and you can install software. When you are done, you can package it into a read-only image file.
+
+-   Definition file - This is a plain-text file that describes the base image (which can just be an operating system, or can have software installed) to start from, then all the steps for software to install, variables to set, files to add, and any other commands that need to be run. This is the preferred option, since everything needed to reproduce the container is in the definition file.

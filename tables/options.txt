@@ -1,0 +1,3 @@
+Expression	Description
+-maxdepth levels	Descend at most levels (a non-negative integer) levels of directories below the command line arguments.
+-mindepth levels	Do  not  apply  any  tests or actions at levels less than levels (a non-negative integer).

@@ -1,0 +1,59 @@
+---
+author: "Glenn Morton, Yeji Bae"
+date: "last-modified"
+output:
+  html_document: default
+always_allow_html: true
+---
+# Linux/Unix Command Line Cheat Sheet {#sec-linuxcheatsheet}
+
+```{r setup2, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE, include=TRUE)
+library(knitr)
+library(kableExtra)
+```
+
+Adapted from GettingGeneticsDone.blogspot.com
+
+```{r, echo=FALSE, eval=TRUE}
+filePath <- "tables/LinuxCheatSheet_commands.txt"
+t1 <- read.table(file=filePath, sep="\t", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+footnote <- tail(t1, n = 1)[1]
+t1 <- head(t1, n=-1)
+kable(t1, align = 'l') %>%
+  add_footnote(footnote, notation = 'none') %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE, html_font = "\"Trebuchet MS\", verdana, sans-serif")
+```
+
+#### Absolute vs relative paths.
+
+Let’s say you are here: `/home/turnersd/scripts/`. If you wanted to go to `/home/turnersd/`, you could type: `cd /home/turnersd/.` Or you could
+use a relative path. `cd .. `(two periods) will take you one directory “up” to the parent directory of the current directory.
+
+* . (a single period) means the current directory
+
+* .. (two periods) means the parent directory
+
+* ~ means your home directory
+
+```{r, echo=FALSE, eval=TRUE}
+filePath <- "tables/LinuxCheatSheet_absoluteVsRelative.txt"
+t1 <- read.table(file=filePath, sep="\t", header = FALSE, check.names = FALSE, stringsAsFactors = FALSE)
+title = c(2)
+names(title) <- head(t1, n = 1)[1]
+t1 <- tail(t1, n = nrow(t1)-1)
+kable(t1, align = 'l', col.names = NULL, row.names = FALSE) %>%
+  add_header_above(header = title) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE, html_font = "\"Trebuchet MS\", verdana, sans-serif")
+```
+
+```{r, echo=FALSE, eval=TRUE}
+filePath <- "tables/LinuxCheatSheet_wildcards.txt"
+t1 <- read.table(file=filePath, sep="\t", header = FALSE, check.names = FALSE, stringsAsFactors = FALSE)
+title = c(2)
+names(title) <- head(t1, n = 1)[1]
+t1 <- tail(t1, n = nrow(t1)-1)
+kable(t1, align = 'l', col.names = NULL, row.names = FALSE) %>% 
+  add_header_above(header = title) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE, html_font = "\"Trebuchet MS\", verdana, sans-serif")
+```

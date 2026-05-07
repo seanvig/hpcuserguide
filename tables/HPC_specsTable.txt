@@ -1,0 +1,5 @@
+Node type	Nodes	Processor	Cores	Memory	Graphics Cards Total	GPU memory	Function
+Login	2	2 x 3.5GHz	64	1024GB	NA	NA	User access points for light development and job dispatching
+Standard CPU	33	2 x 3.5GHz	64	1024GB	NA	NA	Primary compute nodes
+Posit node	1	2 x 3.5GHz	64	1024GB	NA	NA	"Interactive sessions with RStudio, Jupyter, and VSCode"
+Standard GPU	7	2 x 3.5GHz	64	2048GB	"4x NVIDIA A100 SXM4, NVLINK, 80GB"	320GB	CUDA/Graphic Accelerated work flows

@@ -1,0 +1,2 @@
+Expression	Description
+"-execdir command ;"	"The specified command is run once for each matched file."

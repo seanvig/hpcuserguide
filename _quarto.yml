@@ -1,0 +1,86 @@
+project:
+  type: book
+
+book: 
+  title: "Sasquatch HPC User Guides"
+  page-navigation: true
+  
+  favicon: images/Sasquatch_icon1.png
+  cover-image: images/Sasquatch_icon1.png
+  sidebar:
+    style: "docked"
+    search: true
+    collapse-level: 1
+  page-footer:
+    right: |
+      This book was built with <a href="https://quarto.org/">Quarto</a>.    
+    
+  chapters:
+    - index.qmd
+    
+    - part: "HPC Quick Start Guide"
+      chapters:
+        - Onboard.qmd
+        - Quickstart.qmd
+        - Examples.qmd
+        - FAQ.qmd
+    
+    - part: "Sasquatch"
+      chapters:
+        - HPCintro.qmd
+        - AccessingSasquatch.qmd
+        - Associations.qmd
+        - DataStorageTransfer.qmd
+        - Policies.qmd
+    
+    - part: "Slurm"
+      chapters:
+        - SlurmScheduler.qmd
+        - SubmittingJobs.qmd
+        - MonitoringJobs.qmd
+        - Logging.qmd
+        - ScalingJobs.qmd
+
+    - part: "Software"
+      chapters: 
+        - UsingSoftware.qmd
+        - RSasquatch.qmd
+        - Mamba.qmd
+        - Modules.qmd
+        - Containers.qmd
+        - InstallingSoftware.qmd
+        - Resources.qmd
+        
+    - part: "Posit"
+      chapters: 
+        - Posit.qmd
+        - Posit_Workbench.qmd
+        - Posit_Connect.qmd
+
+    - part: "Working Smarter"
+      chapters:
+        - Optimization.qmd
+        - Parallelism.qmd
+        - UsingGPUs.qmd
+        - Nextflow.qmd
+        - UsingSSHKeys.qmd
+        - UsingCheckSums.qmd
+        - UsingGit.qmd
+        - UsingLocalIDEs.qmd
+
+    - part: "RSC resources"
+      chapters:
+        - GettingSupport.qmd
+        - lunch_and_learn.qmd
+        - LinuxCheatSheet.qmd
+
+
+execute:
+  freeze: auto
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+code-block-bg: true

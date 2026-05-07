@@ -1,0 +1,4 @@
+Linux	Mac/Win
+"Directories"	"folders"
+"Executables"	"applications/programs"
+"Files"	"files (text files, documents, etc)"

@@ -1,0 +1,168 @@
+---
+author: "Sean Taylor, Glenn Morton"
+date: "last-modified"
+format: html
+execute:
+  eval: false
+  echo: true
+---
+# R on Sasquatch {#sec-R}
+
+*(NOTE: It is recommended to use RStudio in [Posit Workbench](@sec-positworkbench) for interactive workloads with R.)*\
+
+
+## Running R on Sasquatch {#apptainer-r-details}
+R is provided inside an Apptainer container, and it's execution follows the basic form for any Apptainer command:
+``` bash
+apptainer exec --bind --bind /data/hps/assoc <container_path> <R or Rscript>
+```
+
+
+### Posit container (`<container_path>`) {.unnumbered}
+
+To have the HPC run R, you will need to use the Posit container that has the supported versions of R. These can be found in the public `bioinformatics` association here: \
+`{< var path.positimages >}}`\
+\
+It is recommended to use a variable for this path and the container you choose to make things more readable for yourself.\
+i.e. `CONTAINER={{< var path.positimages >}}/{{< var path.baseimage >}}`\
+
+### R version (`<R or Rscript>`) {.unnumbered}
+
+The Posit container will use R {{< var path.rversion >}} by default, but if you want a specific version you can specify the path within the apptainer exec call explicitly for Rscript or R.\
+`/opt/R/<version>/Rscript` or `/opt/R/<version>/R`\
+\
+*(Note: `Rscript` is used to execute a script and `R` is used to start the R terminal)*\
+e.g. to explicitly specify the same version as the default:
+`apptainer exec --bind /data/hps/assoc ${CONTAINER} /opt/R/{{< var path.rversion >}}/Rscript my_script.R`
+
+### Bind path (`<bind_path>`) {.unnumbered}
+
+When using [Apptainer](https://apptainer.org/documentation/) it's important to remember to add the [bind path](https://apptainer.org/docs/user/latest/bind_paths_and_mounts.html) so that the container can access the files outside of it with option `--bind`. The following is what we recommend and will make all association files you have access to available within the container `--bind /data/hps/assoc`
+
+## Running an R script within sbatch {#sbatch-example-to-run-an-r-script}
+
+Here is an example to submit an R script, `my_script.R`, from the current working directory with [`sbatch`](#sec-submittingjobs) to the `cpu-test-sponsored` partition with 1 minute of wall time to execute in the container. It will produce a log file of the form `slurm-<job_id>.out` to the current working directory.\
+**file `my_script.R`:**\
+
+``` bash
+write("hello world", stdout())
+```
+
+**file `r_test.slurm`:**\
+*(Note: adjust account, partition, time and other resources for your real script as appropriate, `sshare -o "Account%40,Partition%40"`)*\
+
+``` bash
+#!/bin/bash
+
+#SBATCH --account=cpu-test-sponsored
+#SBATCH --partition=cpu-test-sponsored
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=7500M
+#SBATCH --time=0-00:01:00
+#SBATCH --mail-type=ALL
+
+# ^ Resource request
+#------------------------------------------------------------------------------
+# v Execution script
+
+CONTAINER={{< var path.positimages >}}/{{< var path.baseimage >}}
+
+echo "CONTAINER=${CONTAINER}"
+
+apptainer exec --bind /data/hps/assoc ${CONTAINER} Rscript my_script.R
+
+echo "FINISHED!"
+```
+
+**command:**\
+*(Note: change the email to get notified about job starting and ending)*\
+`sbatch --mail-user={{< var path.exampleemail >}} r_test.slurm`\
+
+## Launch R console
+
+### Launch interactive R console on a worker node
+*(NOTE: It is recommended to use RStudio in [Posit Workbench]({{< var link.posit >}}) for interactive workloads with R.)*\
+To launch the R console interactively on a node for an hour you could do:\
+
+``` bash
+CONTAINER={{< var path.positimages >}}/{{< var path.baseimage >}}
+srun --partition=cpu-core-sponsored --account=cpu-mylab-sponsored \
+  --nodes=1 --ntasks=1 \
+  --cpus-per-task=1 --mem-per-cpu=7500M --time=0-01:00:00 \
+  --pty apptainer exec --bind /data/hps/assoc ${CONTAINER} R
+```
+
+*Please change the example `--account` above to one you would like to use (`sshare -o "Account%40,Partition%40"`).*
+
+To launch a specific version of the R console, for example {{< var path.rversion >}}:\
+
+``` bash
+CONTAINER={{< var path.positimages >}}/{{< var path.baseimage >}}
+srun --partition=cpu-core-sponsored --account=cpu-mylab-sponsored \
+  --nodes=1 --ntasks=1 \
+  --cpus-per-task=1 --mem-per-cpu=7500M --time=0-01:00:00 \
+  --pty apptainer exec --bind /data/hps/assoc ${CONTAINER} /opt/R/{{< var path.rversion >}}/R
+```
+
+### Launch interactive R Console on current node (BE CAREFUL ABOUT LOGIN NODE)
+
+Do not run big jobs on the login node, but you are allowed to do lightweight exploration on the login node\
+**login nodes are not for development nor execution.**
+
+``` bash
+CONTAINER={{< var path.positimages >}}/{{< var path.baseimage >}}
+apptainer exec --bind /data/hps/assoc ${CONTAINER} /opt/R/{{< var path.rversion >}}/R
+```
+
+## Managing R libraries
+
+The posit container contains many libraries pre-installed. However, you are welcome to install and manage your own libraries as well. By default `install.packages` will install packages in your `home` directory. If you are using R and are a member of an association, we highly recommend storing your R packages in your association space so that you don't fill up your home directory with them. Using a text editor in the bash terminal, OpenOnDemand web interface, or RStudio, open the file `~/.Renviron` for editing, creating it if it doesn't exist yet.
+
+To `~/.Renviron`, add the line:
+
+``` bash
+R_LIBS_USER_BASE_PATH="{{< var path.examplelabuser >}}"
+```
+
+replacing "mylab" with your association name and "mmouse" with your user name. This is now your default location for installing R packages.
+
+The following function will tell you where R will look for installed libraries:
+
+```{r, eval=FALSE}
+.libPaths()
+```
+
+Typically, there will be several locations returned after you call the `.libPaths()` function. And whenever you call `library()`, R will check each those locations *(in order)* to try and find a matching library. However, the 1st of these paths is the only one where R will normally try to install any libraries that you request to have installed. 
+
+If you add `R_LIBS_USER_BASE_PATH` to your `~/.Renviron` as above, it is quite powerful. This will give R the base path for all packages installations regardless of version. i.e. The 1st path in `.libPaths()` will be set to a sub directory corresponding to the version of R running.
+For most users, you should have this path be your specific user folder in your association.
+
+This means that you could also share a pool of libraries with coworkers in order to either save space or to standardize work by leveraging your associations. If you all agree to use the same path in a shared read/write location. This would mean that you could install R libraries into the special shared directory in your association in order to save on space in your home directory and your association. Perhaps something like a `library` folder at the root of your association.
+
+Remember also that R will always just load the 1st instance of a library that it sees in the library path, so accidental masking effects are possible if you don't pay attention to what you are doing. Additionally, you need to make sure that a directory exists before pointing `.libPaths` to that directory. This is taken care of automatically by using the above method instead of modifying `.libPaths()` directly. In addition, this will automatically manage your custom `.libPaths()` no matter which version of R you use!
+
+
+## Using Reticulate
+
+Sometimes when you are using R and RStudio, it can be convenient to also access a companion python environment at the same time. This is easy to do by using the reticulate package and mamba. This allows you to not only have access to both R and Python at the same time, but you can even get access to the objects from each individual session: at the same time!
+
+If you want to use Mamba for your python environments and you want R to always know where mamba is installed, you simply add `RETICULATE_CONDA` to your `~/.Renviron`. You can find the path to mamba by `whereis mamba`.
+
+To `~/.Renviron`, add the line:
+
+``` bash
+# Tell R that I have Mamba installed: (found by using: whereis mamba )
+RETICULATE_CONDA="{{< var path.examplelabuser >}}/miniforge3/condabin/mamba"
+```
+
+See [Accessing conda environments from inside of RSTUDIO](Posit_Workbench.qmd#accessing-conda-environments-from-inside-of-rstudio) for use cases.
+
+## .Rprofile file
+
+What if you have something that you want R to do EVERY time that you use it? One way to address this is to configure a special `.Rprofile` file in your home directory. The `.Rprofile` file is just a special R script that RStudio will always run whenever your R sessions launch. It's kind of like the R equivalent of a `.bashrc` file for your terminal sessions.
+
+_**Be careful! This is run no matter where you run R and no matter which version of R you run!**_
+
+And of course, you can get as fancy as you dare to with this file. You can even create objects that will automatically be in your environment on startup. Just remember that R will *always* run this. So be sure to think carefully about what you want to put in there.

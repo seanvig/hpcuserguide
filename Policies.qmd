@@ -1,0 +1,126 @@
+---
+author: "Sean Taylor and Marc Carlson"
+date: "last-modified"
+format: html
+---
+# Policies {#sec-policies}
+
+## File quotas
+
+Home directory storage is modest, with Association storage providing a large space where users can collaborate efficiently. Things like mamba installations or R libraries are recommended to be used with association storage rather than being stored in user home directories.
+
+**Home**
+
+-   100 GB
+
+-   216,000 files
+
+**Association**
+
+-   1 TB; can increase in 1 TB increments
+
+-   2,160,000 files; increased proportionally per TB
+
+
+## Job submissions on main partition
+
+These policies are for job submissions are tied to the account. These apply to all jobs submitted to the scheduler, as well as Posit workbench jobs submitted to the "main" cluster.  For jobs submitted to the "posit" cluster, see [posit partition](#job-submissions-on-posit-partition).
+
+The priority for jobs submitted to the main partition is to enable important science.  That means that users might experience queue delays if the cluster is under heavy load, but that the resources they can request here have very few constraints.
+
+-   **\[cpu/gpu\]-core-sponsored**
+
+    -   Intended for basic users on main partition. Restrictions coming by FY26.
+
+    -   Fair-share queuing with backfill.
+
+    -   Will receive lower priority than association accounts.
+
+-   **\[cpu/gpu\]-\[association\]-sponsored**
+
+    -   Intended for advanced users on main partition.
+
+    -   Fair-share queuing with backfill. (this means that if the cluster is busy, that you might have to wait)
+
+    -   Max wall time: 14 days
+
+-   Posit workbench jobs
+
+    -   Posit workbench jobs submitted to the "main" cluster are limited to max of 1 node
+
+## Job submissions on Posit partition
+
+These apply to all jobs submitted to the "posit" cluster. For jobs submitted to the "main" cluster see [main partition](#job-submissions-on-main-partition).
+
+-   **\[cpu/gpu\]-posit_workbench-sponsored**
+
+    -   Used only with interactive Posit sessions that run on the Posit partition.
+
+    -   Preset cpu, gpu, and memory bundles through the Posit launcher.
+
+    -   Max wall time of 12 hrs on the interactive Posit partition.
+
+    -   Limit of 1 active GPU session and 2 total active sessions per user.
+
+
+-   **Other details about Interactive jobs**
+    
+    -   Policies for Posit jobs are designed to minimize delays in starting a small Posit session, as well as to minimize resource contention between interactive sessions and batch jobs. 
+
+    -   Capacity is reserved to allow 64 "small" cpu posit jobs to run concurrently.
+
+    -   Posit interactive sessions are designed for code development and testing, and not for running GUI applications or for rendering images. X11 cannot be enabled.
+
+## Understanding Slurm's Fair Share Scheduling {#sec-policies_fairshare}
+
+On our HPC, we use the **Fair Tree** algorithm in Slurm to manage job scheduling and priorities. Fair share is designed to promote a balanced usage of cluster resources over time by giving higher priority to users or groups who have used fewer resources recently. Think of it as a dynamic system that rewards good citizenship.
+
+### How Fair Share Works
+
+The fair share system calculates a **fair share factor** for each user and group. This factor is a numerical value that reflects the difference between the resources you've been promised and the resources you've actually consumed. The factor is calculated based on two main components:
+
+-   **Shares**: This is the portion of the cluster's resources you are allocated. Your group has a set number of shares, and you, as a user, inherit a portion of those. Shares represent your **entitlement** to the cluster's resources.
+-   **Usage**: This is the total amount of resources your jobs have consumed over a specific period. Usage is tracked in terms of CPU-hours, memory, and other resources.
+
+The fair share factor is a ratio of your shares to your usage.
+
+-   If your fair share factor is **high** (i.e., you have used less than your allocated share), your jobs will be given a higher priority.
+-   If your fair share factor is **low** (i.e., you have used more than your allocated share), your jobs will have a lower priority.
+
+This system doesn't prevent you from overusing your share; it just lowers your priority. If the cluster is not busy, your low-priority jobs will still run. However, if other users with higher fair share factors submit jobs, their jobs will be scheduled before yours. Your fair share factor naturally recovers over time as your past usage "ages" and its impact on your factor decreases.
+
+### The Fair Tree Algorithm
+
+The Fair Tree algorithm organizes accounts and users into a hierarchical tree structure. This ensures that fair share is applied at multiple levels—from the top-level accounts down to individual users. The priority calculation starts at the top of the tree and works its way down, ensuring that all users within a higher-priority parent account receive higher priority than all users in a lower-priority sibling account. This prevents one user from negatively affecting the priority of another user outside their account.
+
+### Non-Preemptive Policy
+
+It's important to note that our cluster has a **non-preemptive** policy. This means that once a job begins running, it will never be stopped or "pre-empted" by a higher-priority job. Your job will continue to run until it finishes or reaches its time limit, regardless of its priority score. Fair share is only used to determine the order of jobs in the queue before they start.
+
+### Backfilling
+
+To maximize resource utilization and prevent the cluster from sitting idle, our scheduler employs a technique called **backfilling**.
+
+Backfilling allows lower-priority jobs to start running even while higher-priority jobs are waiting, as long as the lower-priority job does not delay the expected start time of any higher-priority job. Think of it like this: if a high-priority job is waiting for a large chunk of resources that won't become available for an hour, the scheduler might "backfill" that empty time with smaller, shorter jobs that will finish before the high-priority job is set to start.
+
+For backfilling to work effectively, it's crucial that you specify accurate job runtime limits with the `--time` flag. If your job finishes earlier than you requested, you may be missing a backfilling opportunity. Conversely, requesting a much longer time than you need can hurt your chances of being backfilled. Backfilling is a great way to get a job started when the cluster is busy.
+
+------------------------------------------------------------------------
+
+## Experimental features
+
+Sometimes we will roll out features that are in 'preview', 'beta' or 'experimental' state.  When we do this, we do so with the intention of allowing users to get early access and possibly to even help us to shape how these new tools will be used on the system. Sometimes, we may even roll out features that do not exist in (many or even any) other places in the world. We believe that this kind of bold experimentation is necessary if we expect to be the best in the world at what we do, and so we don't intend to shy away from it if we feel that it is safe and appropriate.
+
+When we deploy features like this:
+
+- These features will be called out as being 'experimental' when they are announced and in the relevant documentation.
+
+- We reserve the right to remove or disable any 'experimental' features should it become necessary to protect the system.
+
+- We can make no promises about the performance of 'experimental' features.  These tools are provided 'as is', and all we can do is try to help users to make use of them.
+
+## Billing {#sec-policies_billing}
+
+At this time, we are not enforcing any charge-back for using Sasquatch. We would like to just help everyone fully leverage the capabilities of the system without fear of building up any charges.
+
+Should chargeback be approved by the Research Administration, we will begin sending show-backs to help people see what the new charges will look like before they are implemented. Please check back here frequently for any updates.

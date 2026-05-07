@@ -1,0 +1,38 @@
+Application	Module?	/cm/shared/apps?	PIP package?	Native to OS?
+vt	x	x		x
+timmomatic	x	x		
+TensforFlow (CPU only)			x	
+star	x	x		
+scipy				
+Salmon 0.8.2	x	x		
+R/3.3	x	x		
+Python 3.6.1	x	x		
+python2.7				x
+Pisces 5.2.0.1				
+Pisces 5.1.6.54	x	x		
+Pandoc				
+numpy			x	x
+Mono	x	x		
+matplotlib			x	
+matlab	o	o		o
+macs2			x	
+LiftOver	x	x		
+				
+homer	x	x		
+GNU Parallel 20170922	x	x		
+globusconnectpersonal/2.3.3				
+globus-cli 1.1.2				
+GATK		x		
+featureCounts	x	x		x
+(subread)				
+cython			x	x
+cvxopt			x	
+cutadapt 1.11	x	x		
+Cell Ranger	x	x		
+biobuilds/2017.05	x	x		
+biobuilds/2016.11	x	x		
+bedops (bedtools)	x	x		
+Bazel	x	x		
+ANTs	x	x		
+annovar				x
+.NET Core 1.0.5	x	x		

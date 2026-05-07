@@ -1,0 +1,153 @@
+---
+author: "Marc Carlson, Sean Taylor, Glenn Morton and Lindsay Clark"
+date: "last-modified"
+output:
+  html_document: 
+    toc: yes
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+    anchor-sections: true
+always_allow_html: true
+---
+
+# Sasquatch Resources {#sec-resources}
+
+```{r setup4, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE, include=TRUE, shortcodes=TRUE)
+library(knitr)
+library(kableExtra)
+```
+
+## Overview
+
+Often when you use Sasquatch, you will be doing something commonplace. Something that has been done many times before and which you and your colleagues are likely to want to do again.
+
+When you do those kinds of activities, you may not need to set everything up for yourself because others who have gone before you may already have these common activities "working".
+
+This part of the guide will be dedicated to listing and describing how to find out about existing containers, nextflow workflows and related things that have been previously discovered and made to work on the Sasquatch cluster. So plan to check back here from time to time, because it might save you a lot of time!
+
+For Sasquatch, we have created some resources in a 'public' association that you should be able to just navigate to and use. The path to this association is as follows:
+
+``` bash
+{{< var path.bioinformatics >}}
+```
+
+And in this association, we have placed some useful things that our team has already set up for you.
+
+## Containers
+
+One of the resources we are providing here are containers that we have already pulled down (or created) and used for common tasks. You can think of containers sort of how you think about modules, except that they are also more portable and are 'cleaner' to use since they introduce fewer side effects for end users. For the full run down on how to use apptainer, you should look at the documents [here](https://apptainer.org/docs/user/main/introduction.html). But you don't need to read all that stuff to get started. To launch into an apptainer environment all you need is a simple command like the one that follows:
+
+``` bash
+apptainer shell --bind /data/hps/assoc \
+{{< var path.bioinformatics >}}/container/rare-disease-wf/depot.galaxyproject.org-singularity-bcftools-1.9--ha228f0b_4.img
+
+bcftools view -h
+
+exit
+```
+
+Lets break the above command down so that you understand what all those words are doing...
+
+```         
+<command> <verb> <bindpath> <pathToContainerFile>
+
+<commands in container>
+
+exit
+```
+
+-   The `<command>` here is '`apptainer`'. `apptainer` is an application that allows you to do many things involving containers safely on an HPC. Older versions of `apptainer` used to be called `singularity`.
+
+-   Which thing `apptainer` does is determined by the `<verb>`, which in our example is 'shell'. 'shell' here means that we want to launch into the container on a unix shell and thus have our OS be the one that is defined inside of the container. If we had chosen to instead say 'run', then at the end we might have given a command that was defined inside of the container for `apptainer` to directly launch into.
+
+-   Next up is the `<bindpath>`, which basically is used to tell apptainer that you want the environment of the running container to know about ALL possible paths you might have that are inside of any association that you are a part of. So just by saying `--bind /data/hps/assoc` you are adding all of those locations in the file systems to your apptainer session.
+
+-   And finally, we have `<pathToContainerFile>`, which basically is the path to a shared `.sif` (or sometimes a `.img` file) somewhere on Sasquatch that you can read. `apptainer` needs that path so that it can launch the container.
+
+More details on finding and running containers can be found on our [Using Containers: Apptainer and Docker](Containers.qmd) page.
+
+So hopefully now you can see that it's not super complicated to launch an `apptainer`. But there are some really BIG advantages over using modules with `apptainner`. One of the most important ones is: reproducible science. Unlike modules, which are not really "shareable" in any meaningful way, apptainer environments run out of a single `.sif` (or `.img`) file. So if you need to share the exact environment with a colleague far away, then you only need to share that file.
+
+Here is a curated (and growing) list of files that we have, and which we would like to share with you. Please feel free to reach out if you would like to contribute to this list. Or, you can store your own favorites inside of your own association and be more private.
+
+On disk you can see the manifest here:
+
+``` {.bash eval="FALSE"}
+{{< var path.bioinformatics >}}/container/container_manifest.csv
+```
+
+And for the document we can render the contents of that document as a table.
+
+### To read this table:
+
+The 'Folder' column tells you the sub-folder that you need to look in WITHIN the 'container' folder in the path below.
+
+``` {.bash eval="FALSE"}
+{{< var path.bioinformatics >}}/container
+```
+
+And using that, you should be able to construct an image path to any of these containers.
+
+```{bash, echo=FALSE, eval=FALSE, results='hide'}
+# get the container manifest for the table
+REPO=ssh://git@company-domain:7999/rcon/manifest.git
+# clean the cache of the manifest if it exist, useful for dev and test
+if [[ -d manifest ]]; then { rm -rf manifest; } fi
+
+# check if can use the same branch as the HPCGuide, useful for CICD verification.
+if [[ $(git ls-remote --heads $REPO refs/heads/`git branch --show-current`) ]]; then
+  # get dev, main, latest/release branch of container manifest based on branch of HPCGuide
+  # this is used to verify the manifest through CICD before it goes to latest/release
+  echo "clone container maniest branch: $(git branch --show-current)"
+  git clone --branch `git branch --show-current` $REPO
+else
+  # this is useful to verify HPCGuide features in development.
+  # may consider editing this to a specific branch of manifest if you want 
+  #   to test manifest before it hits dev, main, latest/release branch of manifest.
+  echo "clone container maniest branch: release/latest_release"
+  git clone --branch release/latest_release $REPO
+fi
+```
+
+```{r, echo=FALSE, eval=FALSE}
+filePath <- "manifest/container_manifest.csv"
+t1 <- read.csv(file=filePath, sep=",", header = TRUE, check.names = FALSE, stringsAsFactors = FALSE, comment.char = "#")
+t1 <- t1[,c(1,2,5)] # subset to just relevant columns for now
+footnote <- tail(t1, n = 1)[1]
+t1 <- head(t1, n=-1)
+kable(t1, align = 'l') %>%
+  add_footnote(footnote, notation = 'none') %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE, html_font = "\"Trebuchet MS\", verdana, sans-serif") %>%
+  column_spec(1, width = "10em")
+```
+
+## Modules
+
+You are probably already familiar with modules. Sometimes it's just more convenient to use them despite the many disadvantages that they present relative to containers, so we do maintain a SMALL collection of these for use on the cluster. To see what modules you have available run
+
+``` bash
+module avail
+```
+
+See our [Modules](Modules.qmd) page for more information on using modules on Sasquatch.
+
+## Nextflow workflows {#sec-resources_nextflow}
+
+Nextflow is a "workflow language", meaning it is used for chaining together a series of commands or scripts to form a pipeline. There is an organization called [nf-core](https://nf-co.re/) that curates and maintains many useful workflows, and you should be able to use these on Sasquatch as described on our [Nextflow](Nextflow.qmd) page. We have vetted some of these pipelines for use on Sasquatch. Please refer to [nf-core_vetted_pipelines](https://ea-bitbucket-prod./projects/RP/repos/nf-core_vetted_pipelines/browse).
+
+Additionally, we maintain a few workflows of our own:
+
+-   [rnaseq_count_nf](#): For generating a counts matrix for bulk RNA-seq, starting from FASTQ files. Uses FASTQC, STAR aligner, Picard MarkDuplicates, and RSEQC.
+-   [cutandrun_nf](#): Processes CUT&RUN data using FASTQC, Bowtie2, SEACR, and optionally MACS2.
+-   [nf-dda-tpp](#): Starts from ThermoFisher proteomics data, converts to .mzml, searches against a FASTA file using Comet, and validates and parses the results using Peptide Prophet.
+-   [rare-disease-wf](#): For whole exome or whole genome sequencing data of trios, duos, or singletons (human). The main workflow starts with a multi-sample VCF and a pedigree, then annotates and filters it to functional variants following certain inheritance patterns. There is a separate workflow called `calltrios` that starts with FASTQ or BAM files, calls variants with DeepVariant/DeepTrio, then runs joint genotyping with GLNexus.
+-   [scenic_nf](#): Infers gene regulatory networks and transcription factor activity from scRNA-seq using the SCENIC framework (GENIE3/GRNBoost2, RcisTarget, AUCell).
+-   Several older workflows have not yet been updated for Sasquatch: [atacseq_nf-core](#), and [tfcomb_nf](#). Feel free to contact us if you would like to use these, and we will get them updated.
+
+To use any of these workflows, we recommend that you make your own fork of them on Bitbucket, then clone your fork to Sasquatch. The rna_count_nf has some screenshots in the README on how to do this. Using [Git](https://www.w3schools.com/git/), you can track any changes that you make and then push them back to your fork on Bitbucket for safe keeping. You can open the workflow's folder in VS Code (ideally with the Nextflow extension installed) to view and edit files, and it has a nice user interface for Git.
+
+Every workflow has parameters that you can edit in order to specify your input files and any other important variables. If you open the `nextflow.config` for your pipeline you will see those parameters. One option is to edit them directly in the `nextflow.config`. However, if you prefer you can supply the parameters [on the command line or in a separate YAML or JSON file](https://training.nextflow.io/2.0/basic_training/config/).
+
+See instructions in the Nextflow section on [how to run a Nextflow workflow](Nextflow.qmd#sec-runningnextflow).

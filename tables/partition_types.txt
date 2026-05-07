@@ -1,0 +1,6 @@
+State	Description	Resources
+"__cpu-test-sponsored__"	"Limited partition that costs nothing to use. For testing purpose only."	"1 unit at a time. Time - upto 15 minutes."
+
+"__cpu-core-sponsored__"	"No limits in terms of how many cores or how much memory you can request. Will be used for most jobs"	"Time - upto 14 days" 
+
+"__gpu-core-sponsored__"	"No limits in terms of how many cores or how much memory you can request.	"Time - upto 14 days"

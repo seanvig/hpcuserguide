@@ -1,0 +1,29 @@
+Package: hpcuserguide
+Title: Dependencies for the HPC User Guide
+Version: 0.1.0
+Authors@R: person("Sean", "Taylor", role = c("aut", "cre"))
+Description: Packages required to render the User Guide quarto book. List key Imports for contributors
+    and use `renv` for exact reproducibility where desirable.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+Imports:
+    knitr,
+    rmarkdown,
+    quarto,
+    dplyr,
+    ggplot2,
+    readr,
+    tibble,
+    tidyr,
+    purrr,
+    stringr,
+    fs,
+    here,
+    magrittr,
+    kableExtra
+Suggests:
+    renv,
+    remotes,
+    testthat,
+    rsconnect

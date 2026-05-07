@@ -1,0 +1,100 @@
+---
+title: "Associations"
+author: "Marc Carlson, Sean Taylor, Glenn Morton, and Lindsay Clark"
+date: "last-modified"
+format: html
+---
+
+## What is an Association
+
+An association is an organization of people and resources that have a common interest. For Sasquatch, associations define a set of users who have access to a shared set of compute and storage resources, and it provides a structure for organizing all the data, analysis, and code relevant to that association. They are somewhat analogous to the concept of a "project" on Cybertron.
+
+Associations can either be public or private. Public associations can provide resources, data, and code for all users. Private associations can provide resources for a specified set of users. Below are some of the features and services available to associations:
+
+-   Shared storage space beyond the 100 GiB block quota of your home
+
+-   Snapshots of association storage for point in time recovery of data
+
+-   Shared applications, modules, environments, containers that can be used by all members of the association
+
+-   Dedicated compute accounts with fewer restrictions on resource consumption
+
+-   Access to premium coding tools such as Posit workbench, which provides access to RStudio, Jupyter, VSCode, etc
+
+## Association resources
+
+### Association Storage
+
+By default all users have home storage with a block quota of 100 GiB and a file quota of 216,000 files. This is not generally enough space to use as scratch or to store your data.
+
+With associations, users or groups of users can be provided with a shared storage space where all relevant data and files for the association can be stored. The size of the association quota can be provisioned according to the needs of the association in 1TB increments. All Association storage resides on High-Performance Storage.
+
+Snapshots of association storage can be enabled to provide regular point-in-time restore points to recover from accidental deletions or earlier states.
+
+### Association code
+
+The directory structure of association storage includes the following top level directories:
+
+-   `bin`
+
+-   `container`
+
+-   `lib`
+
+-   `module`
+
+-   `user`
+
+This directory structure allows association members to install and deploy software that is shared by all association members. This could be software that is installed directly into the association, singularity containers, mamba environments, or modules. Eventually, association members will be able to load all modules within the association by simply typing `module load {association_name}`
+
+You are free to add more folders to the top level of your association storage in order to organize resources/data/software that you want to share with other members of your association. However, try to avoid cluttering the top level with individual files. Your typical working directory will be in your user folder, not the top level of the association.
+
+### Association compute
+
+By default all users have access to the following general accounts for submitting jobs:
+
+-   `cpu-core-sponsored`
+
+-   `gpu-core-sponsored`
+
+These accounts are available to all users. However, they are restricted. Users will have enough access to resources that they can experiment, but they will not be able to submit large batches or scale their resource consumption.
+
+Association members will be provided with private accounts for submitting jobs. These accounts will allow users access to all services and resources on the platform and will support workloads at scale.
+
+### Other resources
+
+Other resources can also be provisioned to associations. These may include resources such as
+
+-   Posit workbench (Rstudio, Jupyter, VSCode) and Posit connect (Shiny)
+
+-   Bitbucket projects
+
+-   Managed file transfer services
+
+-   Cloud resources
+
+## Public associations
+
+There are currently at least 2 public associations that you might find useful.
+
+### `core`
+
+This general association will contain any software intended for very general use. It also contains example code for submitting slurm jobs for your reference.
+
+This association is maintained by the Platform Services team. To request any additions or modifications to these offerings, please reach out on the [High-Performance Computing Platform Team](#) on MS Teams with the tag @Platform in any channel.
+
+### `bioinformatics`
+
+This public association contains data sets and software intended to support bioinformatics use cases. Below are some current offerings as of this writing. These will be expanded as usership and usecases arise.
+
+-   `annotations` dir contains reference sequences and annotations for many of the major model organisms. These can be referenced or linked by any user.
+
+-   `module` contains some common software installations including `STAR` and `cellranger`
+
+-   `container` contains some useful Apptainer images, such as for `R`
+
+This association is maintained by the Research Scientific Computing team. To request any additions or modifications to these offerings, please reach out to the team [email](#).
+
+## Requesting an association
+
+Associations can be requested by submitting a ticket to [High Performance Computing Service Desk]({{< var link.reqassoc >}})

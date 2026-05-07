@@ -1,0 +1,39 @@
+---
+author: "Sean Taylor, Marc Carlson, Glenn Morton, and Lindsay Clark"
+date: "last-modified"
+---
+# Getting Support {#sec-support}
+
+## Consultation
+
+The Bioinformatics team is here to help you successfully implement your computing projects on the HPC. We can get involved with as little as a brief consultation, development of analysis pipelines, and up to long-term participation on specific research projects. You may contact the team and inquire about specific issues using one of several methods:
+
+-   Drop by the bioinformatics office hours. These run typically on Tuesdays from 11:00 to 12:00 on Teams. Specific schedule announcements are made through the Bioinformatics Users Group email list. [Contact us](#) to be added to the list.
+
+-   Open a new topic on the [Sasquatch Scientific Computing Forum](#).
+
+-   Send an email to [ResearchScientificComputing\@company.org](#).
+
+## Forum
+
+As questions arise on how to use the HPC or if you are experiencing difficulties or if you have comments on the experience, we invite you to post these to our [Sasquatch Scientific Computing Forum](#). You can search through the posts to see if someone has had similar questions or experiences. This is also the place to share feedback on the HPC Guide that you are reading right now.
+
+Please feel free to make comments or to create new topics if you don't see anything that matches your search.
+
+We hope that you will check back in frequently as our user base grows and become active participants that can share your expertise and help grow our community!
+
+**Important hint for new forum users:**
+
+Whenever you need to post questions to the forum please be sure to provide a detailed description of your problem and include any data sets or code that are needed to reproduce the problem. If you don't give people enough information to recreate the issue that is bothering you, then it will be very hard for them to help you.
+
+## Documentation
+
+Confluence
+
+-   You can find all kinds of useful documentation in confluence [here](#)
+
+Slurm is documented at <https://slurm.schedmd.com/documentation.html>
+
+## Resolving Hardware/Cluster Problems
+
+To report a problem with something not working properly, please contact the DevOps team on Teams. When you were onboarded to Sasquatch, you should have been added to the "[High-Performance Computing Platform](#)" team, with a channel for your association. This is the place to post your technical issues that are not related to bioinformatics, for example problems with logging in or submitting jobs. You can tag \@Platform in your messages to make sure they are seen by the system administrators.

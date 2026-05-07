@@ -1,0 +1,371 @@
+---
+author: "Sean Taylor, Lindsay Clark, Yeji Bae, and Glenn Morton"
+date: "last-modified"
+format: html
+execute:
+  eval: false
+  echo: true
+---
+
+# Practical Examples {#sec-examples}
+
+## Using slurm {#sec-examples_slurm}
+
+### Basic slurm syntax
+
+#### Requesting a single CPU core
+
+To request 1 CPU, 7.5G of memory, and 1 hour walltime:
+
+``` bash
+sbatch --partition=cpu-core-sponsored --account=cpu-core-sponsored \
+  --nodes=1 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=7.5G \
+  --time=0-01:00:00 myscript.py
+```
+
+#### Requesting multiple CPU cores
+
+To request 4 CPU cores, 30G of memory (4 \* 7.5G), and 2 days walltime:
+
+``` bash
+sbatch --partition=cpu-core-sponsored --account=cpu-core-sponsored \
+  --nodes=1 --ntasks=1 --cpus-per-task=4 --mem-per-cpu=7.5G \
+  --time=2-00:00:00 my_multi_cpu_script.sh
+```
+
+#### Requesting a GPU
+
+To request 1 GPU, 32 CPU cores, 480G of memory, and 30 minutes walltime:
+
+``` bash
+sbatch --partition=gpu-core-sponsored --account=gpu-core-sponsored \
+  --nodes=1 --ntasks=1 --gpus-per-task=1 \
+  --cpus-per-gpu=32 --mem-per-gpu=480G \
+  --time=0-00:30:00 my_gpu_script.py
+```
+
+#### Requesting multiple GPUs and CPU cores
+
+To request 2 GPUs, 64 CPU cores (2 \* 32), 960G of memory (2 \* 480G), and 15 min walltime:
+
+``` bash
+sbatch --partition=gpu-core-sponsored --account=gpu-core-sponsored \
+  --nodes=1 --ntasks=1 --gpus-per-task=2 \
+  --cpus-per-gpu=32 --mem-per-gpu=480G \
+  --time=15:00 my_multi_gpu_script.sh
+```
+
+#### Requesting an Interactive Session
+
+To request an interactive session with 1 CPU, 7.5G of memory, and 1 hour walltime:
+
+``` bash
+srun --partition=cpu-core-sponsored --account=cpu-core-sponsored \
+  --nodes=1 --ntasks=1 --cpus-per-task=1 --mem-per-cpu=7.5G \
+  --time=01:00:00 --pty /bin/bash
+```
+
+See @sec-submittingjobs for more details.
+
+### Slurm batch files
+
+#### Full sbatch Example
+
+Create a slurm batch file from this template:\
+**file `example.slurm`**\
+
+``` bash
+#!/bin/bash
+
+#SBATCH --account=cpu-test-sponsored
+#SBATCH --partition=cpu-test-sponsored
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=7.5G
+#SBATCH --time=0-00:01:00
+#SBATCH --mail-type=ALL
+
+# ^ Resource request
+#------------------------------------------------------------------------------
+# v Execution script
+
+# log the current working directory
+pwd
+
+# run script
+echo "hello world"
+
+echo "FINISHED!"
+```
+
+**command:**\
+
+``` bash
+sbatch --mail-user={{< var path.exampleemail >}} example.slurm
+```
+
+See @sec-submittingjobs_batch for more information.
+
+### System info
+
+#### Checking available accounts and partitions
+
+To view a summary of the accounts and partitions you can use:
+
+``` bash
+sshare -o "Account%40,Partition%40"
+```
+
+#### Cluster and Partition status
+
+To see a summary of all partitions, including their availability and the number of nodes in each state (e.g., idle, allocated, down):
+
+``` bash
+sinfo --summarize
+```
+
+#### Queue status
+
+To see a list of jobs sorted by priority, which can help you estimate your own job's wait time:
+
+``` bash
+squeue -l --sort=-P
+```
+
+#### Job status
+
+To get more detailed information about your pending jobs, including estimated start times:
+
+``` bash
+squeue -u $USER -l --start
+```
+
+To view information for a running or recently completed job:
+
+``` bash
+scontrol show job <JOB_ID>
+```
+
+To view real-time statistics for jobs that are currently running:
+
+``` bash
+sstat --jobs=<JOB_ID> --format=JobID,AveCPU,MaxRSS,NTasks
+```
+
+To see CPU time and maximum memory usage for a specific completed job:
+
+``` bash
+sacct -j <JOB_ID> --format=JobID,JobName,State,CPUTime,MaxRSS,Elapsed
+```
+
+To cancel a pending or running job
+
+``` bash
+scancel <jobid>
+```
+
+See @sec-monitoring for more information.
+
+## Using Apptainer on Sasquatch
+
+### Running an executable or script within apptainer
+
+To run a script from inside a container with home and association bound:
+
+``` bash
+apptainer exec --bind /data/hps/assoc <container_path> <command script>
+```
+
+### Submitting a job with apptainer
+
+To submit a CPU job that runs `my_cpu_script.py` inside the `my_container.sif` container:
+
+``` bash
+sbatch --partition=cpu-core-sponsored --account=cpu-core-sponsored \
+  --nodes=1 --ntasks=1 --cpus-per-task=8 --mem-per-cpu=7.5G \
+  --time=0-04:00:00 \
+  --wrap="apptainer exec --bind /data/hps/assoc my_container.sif python3 my_cpu_script.py"
+```
+
+To submit a GPU job that runs `my_gpu_script.py` inside the `my_container.sif` container:
+
+``` bash
+sbatch --partition=gpu-core-sponsored --account=gpu-core-sponsored \
+  --nodes=1 --ntasks=1 --gpus-per-task=1 \
+  --cpus-per-gpu=32 --mem-per-gpu=480G \
+  --time=0-04:00:00 \
+  --wrap="apptainer exec --nv --bind /data/hps/assoc my_container.sif python3 my_gpu_script.py"
+```
+
+-   `--nv` This is a crucial flag for GPU jobs. It enables the container to access the NVIDIA GPU drivers and libraries from the host system. It is not necessary for CPU jobs.
+
+### Using a batch script for apptainer jobs
+
+Create a file named `job_script.sh` with the following content
+
+``` bash
+#SBATCH --account=cpu-core-sponsored
+#SBATCH --partition=cpu-core-sponsored
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem-per-cpu=7.5G
+#SBATCH --time=0-04:00:00
+
+# ^ Resource request
+#------------------------------------------------------------------------------
+# v Execution script
+
+apptainer exec --bind /data/hps/assoc my_container.sif python3 my_cpu_script.py
+```
+
+Then submit the job using the batch script:
+
+``` bash
+sbatch job_script.sh
+```
+
+See @sec-containers for more information.
+
+## Running common software
+
+### R
+
+*Note: It is recommended to use RStudio in [Posit Workbench]({{< var link.posit >}}) for interactive workloads with R.* R is provided inside the Posit Apptainer container located at {{< var path.positimages >}}, and it's execution follows the basic form for any Apptainer command:
+
+``` bash
+CONTAINER={{< var path.positimages >}}/{{< var path.baseimage >}}
+apptainer exec --bind /data/hps/assoc ${CONTAINER} /opt/R/{{< var path.rversion >}}/R
+```
+
+See @sec-R for more details on best practices for launching R and running R scripts.
+
+### Cell Ranger
+
+Cell Ranger is provided as a system module:
+
+`module load cellranger` - load latest version of cellranger\
+`module unload cellranger` - unload the loaded cellranger module\
+`module load cellranger/8.0.0` load cellranger/8.0.0 explicitly\
+
+## Install and run software using mamba
+
+### Building a simple conda environment
+
+To build a mamba environment called `fastqc` with FastQC installed from the `bioconda` channel:
+
+``` bash
+mamba create --name fastqc -c bioconda fastqc
+```
+
+### Building a conda environment from `yml`:
+
+Create a file called `fastqc.yml` with the following content:
+
+```         
+name: fastqc
+channels:
+  - bioconda
+dependencies:
+  - fastqc
+```
+
+Then you can use this to create the environment from the file.
+
+``` bash
+mamba env create --name fastqc --file fastqc.yml
+```
+
+### Activating/Deactivating environments
+
+To activate an environment named `fastqc`
+
+``` bash
+mamba activate fastqc
+```
+
+To deactivate an environment
+
+``` bash
+mamba deactivate
+```
+
+Please refer to @sec-mamba for details on installing and using conda.
+
+## Accessing your files
+
+### Files on RSS (helens or baker)
+
+RSS is mounted only on the login nodes. To move data from RSS to HPC storage:
+
+``` bash
+rsync -rzP /data/rss/helens/mouse_m/thingtocopy {{< var path.examplelabuser >}}
+```
+
+### Files on your computer
+
+From your Company imaged laptop, desktop, or Windows VDI, you can use the `scp` command to move files back and forth to Sasquatch. You will need to be connected to the Company network or on Zscalar. Open a Terminal in Mac or Linux, or the Command Prompt in Windows. Use the `cd` command to navigate to the directory on your computer where you want to send or receive files. (Hint: on Windows you might find your Documents folder is actually `"OneDrive\Documents"`.)
+
+To copy a file from your computer to Sasquatch do
+
+``` bash
+scp myfile.txt username@login-1.hpc:{{< var path.examplelabuser >}}
+```
+
+Likewise to copy a file from Sasquatch to your computer, do
+
+``` bash
+scp username@login-1.hpc:{{< var path.examplelabuser >}}/myfile.txt .
+```
+
+You can copy a whole folder with
+
+``` bash
+scp -r myfolder username@login-1.hpc:{{< var path.examplelabuser >}}
+```
+
+See @sec-data for more details.
+
+## Using `tmux`
+
+To start a new `tmux`:
+
+``` bash
+tmux new -s mycoolsession
+```
+
+To reattach to an existing session:
+
+``` bash
+tmux a -t mycoolsession
+```
+
+To list all sessions:
+
+``` bash
+tmux ls
+```
+
+To scroll up/down:
+
+<kbd>Ctrl</kbd> + <kbd>b</kbd> <kbd>\[</kbd> and then use the up and down arrows to scroll.
+
+Press <kbd>q</kbd> when you are done.
+
+See [Tmux Cheat Sheet](https://tmuxcheatsheet.com/) for more help.
+
+## Navigating bash
+
+If you are totally new to Linux/bash, you will need to spend some time working through a tutorial such as that provided by [Software Carpentry](https://swcarpentry.github.io/shell-novice/index.html) or [our old guide from the Linux class](#). We also have a [cheatsheet](LinuxCheatSheet.qmd) of common commands. Here's an even shorter cheat sheet to get you started:
+
+-   `ls`: List contents of the current directory
+-   `pwd`: Print current directory
+-   `cd ~`: Go to your home directory
+-   `cd some/directory/of/mine`: Go to `some/directory/of/mine`, which must be within your current directory
+-   `cd ..`: Go up one directory
+-   `mkdir blah`: Make a new directory called `blah` in your current directory
+-   `rm myfile.txt`: Permanently delete `myfile.txt` from the current directory
+-   `rmdir blah`: Delete the empty directory `blah`
+
+Keep an eye out for our "Introduction to Scientific Computing" course that we offer once or twice a year, as it also covers bash commands.

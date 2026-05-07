@@ -1,0 +1,206 @@
+---
+author: "Lindsay Clark"
+date: "last-modified"
+format: html
+execute: 
+  eval: false
+---
+
+# Nextflow {#sec-nextflow}
+
+## What is Nextflow?
+
+Nextflow is a workflow language, in the same family as Snakemake, CWL, or WDL. It is essentially a means of chaining together a series of bash scripts, so that the output of one can be the input to the next. Each step in the process can be fine-tuned to only request the resources that it needs. If there is an error, you can fix the bug and the workflow will know to pick up where it left off. It is a great alternative to submitting array jobs. Lastly, it makes your research very reproducible, because all of your data processing can be reproduced simply by running the workflow.
+
+A full tutorial on how to use Nextflow is beyond the scope of this user's guide. We suggest [training.nextflow.io](https://training.nextflow.io/) to get started, then [the documentation](https://www.nextflow.io/docs/latest/) once you have specific things you want to know how to do.
+
+## Installing Nextflow using mamba
+
+First, you should make a mamba environment where you will install Nextflow. Create a file called "nextflow.yml" that looks like the one below (updating the Nextflow version if desired). You can save it in your use directory, or if you have copied a workflow to Sasquatch (see "Adapting an existing Nextflow workflow for Sasquatch" below), then a good place for it is a folder called `env` within the workflow.
+
+``` yaml
+name: nextflow
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - nextflow=24.10.4
+  - graphviz
+```
+
+Then, assuming you already have [mamba installed](@sec-mamba), do
+
+``` bash
+mamba env create -f env/nextflow.yml
+```
+
+## Running an nf-core pipeline
+
+There is an organization called [nf-core](https://nf-co.re/) that curates and maintains many useful workflows. It is possible that you will be able to use one of these without any modification. We also host a [Nextflow configuration specifically for Sasquatch](#) on nf-core (with a [copy on the RSC Github](#)). Using `-profile company` with an nf-core pipeline will automatically download and use the Sasquatch configuration.
+
+We have a set of nf-core pipelines that have been vetted and tested on Sasquatch to ensure that they run in our environment. Please see @sec-resources_nextflow for details.
+
+You will want to run Nextflow from a [tmux session](Examples.qmd#optional-start-a-tmux-session), so let's start one.
+
+``` bash
+tmux new -s nextflow
+```
+
+Load your nextflow environment.
+
+``` bash
+mamba activate nextflow
+```
+
+For the `company` profile, you will need to set your association as an environmental variable called `ASSOC` (replace "mylab" with your association's name).
+
+``` bash
+export ASSOC="mylab"
+```
+
+Because the `company` profile uses Slurm, you can run Nextflow directly from the login node. Here is an example of how to test it on `nf-core/rnaseq` pipeline, using the built-in `test` configuration that comes with a dummy dataset.
+
+``` bash
+nextflow run \
+    nf-core/rnaseq \
+    -r 3.14.0 \
+    -profile company,test \
+    --outdir "/data/hps/assoc/private/$ASSOC/user/$USER/nf-core-rnaseq-test" \
+    -work-dir "/data/hps/assoc/private/$ASSOC/user/$USER/nf-core-rnaseq-test-temp"
+```
+
+The `--outdir` is where the results will be saved, and the `-work-dir` is a temporary directory that you can delete when you are done.
+
+Of course, when you run it on your own data, you will need to specify the location of your dataset and a lot of other parameters. We recommend storing your parameters in a `params.json` or `params.yaml` file. There is an [example using JSON](https://training.nextflow.io/2.0/basic_training/config/#parameters) on the Nextflow training website. To know what the parameters are, you can check the nf-core webpage, for example [here they are for `nf-core/rnaseq`](https://nf-co.re/rnaseq/3.18.0/parameters/).
+
+## Adapting an existing Nextflow workflow for Sasquatch
+
+There might be other situations where you can't run a pipeline straight from nf-core, for example if it is someone's pipeline that they just host on GitHub, or if the nf-core pipeline that you want to use needs a few tweaks. In this case you will want to download the pipeline to your association on Sasquatch, for example:
+
+``` bash
+cd /data/hps/assoc/private/mylab/user/mmouse
+
+git clone https://github.com/nf-core/rnaseq.git
+
+cd rnaseq
+```
+
+To the main directory of the Nextflow workflow, make a new file and call it "sasquatch.config". Put in these contents, and change "mylab" to your association name. For `workDir`, use a path in your association where you would like to keep temporary files. If you find `-work-dir` defined elsewhere in "nextflow.config", delete it so that you only have it defined in one file.
+
+``` groovy
+// Settings to run the workflow on Sasquatch
+
+//working directory for temporary/intermediate files produced in the workflow processes
+workDir = '/data/hps/assoc/private/mylab/user/mmouse/myproject/temp'
+
+params {
+  assoc = "mylab"
+}
+
+profiles{
+    sasquatch {
+        process.executor = 'slurm'
+        process.queue = 'cpu-core-sponsored'
+        process.memory = 7500.MB
+        process.time = '72h'
+        process.clusterOptions = "--account cpu-${params.assoc}-sponsored"
+        docker.enabled = false
+        params.enable_conda = false
+    }
+}
+
+singularity {
+    enabled = true
+    autoMounts = true
+    cacheDir = "/data/hps/assoc/private/${params.assoc}/container"
+    runOptions = '--containall --no-home'
+}
+
+executor {
+    queueSize = 2000
+}
+```
+
+Then in the "nextflow.config" file, somewhere that is not within curly brackets, add the line
+
+``` groovy
+includeConfig './sasquatch.config'
+```
+
+These changes do three big things:
+
+-   Point to your association to use for computation and storage
+
+-   Tell Nextflow to submit each task in the workflow as a Slurm job using `sbatch`
+
+-   Tell Nextflow to use Apptainer (which we are calling Singularity, but that is just an alias for Apptainer on our system) to obtain and run the software needed for each process.
+
+Some caveats:
+
+-   You might consider changing `workDir` and `singularity.cacheDir` to be paths specific to just this workflow, especially if you run multiple different workflows.
+
+-   Ideally, each Nextflow process is very self-contained, and only needs the files staged in its respective work directory. However, we have encountered some that expect to have access to your home directory. In that case you should delete `--no-home` from the above code, and may also need to set `NXF_APPTAINER_HOME_MOUNT=true` in bash.
+
+-   Likewise you may have to remove the `--containall` flag if the container launches in the wrong directory and gives you "file not found" errors. I have seen this at least once with a GATK container. I believe that newer versions of Nextflow however are better about launching in the correct directory.
+
+-   If you have some processes that need to use the GPU, you will need to change some settings in "nextflow.config" or "sasquatch.config" just for that process. Here is an example.
+
+``` groovy
+process {
+    withName:'CALL_VARIANTS_TRIO' {
+        // Settings to use GPU with Slurm
+        queue = 'gpu-core-sponsored'
+        cpus = 4
+        memory = 51200.MB
+        clusterOptions = "--gpus 1 --account gpu-${params.assoc}-sponsored"
+        containerOptions = '--nv'
+    }
+}
+```
+
+-   Apptainer containers are not writeable, and so the process should not be trying to write anything to `/tmp` or the like. Workflows that are not developed by nf-core may or may not have been tested with Apptainer. A "no space left on device" error usually means it is trying to write something into the container. You may need to modify the bash script within the process definition (in the "modules" folder) to, for example, create a temp folder in the working directory and tell the software to use that directory instead of `/tmp`.
+
+-   Nextflow does support Apptainer, so why are we calling it "Singularity"? Well, nf-core wrote all of their modules to check for the word "singularity" in order to decide whether to pull a Singularity or Docker image. Rather than rewrite all of the modules, it is easier to keep calling it "singularity".
+
+-   Windows applications. Goodness knows we try to make our workflows entirely Linux-based, but sometimes we are forced to use Windows applications, e.g. file conversion programs made by an equipment manufacturer. Broadly speaking, Windows applications can be run on Linux systems using Windows emulators such as Wine and Mono, both of which can be containerized. Currently, Wine containers won't work at all on Sasquatch, due to how memory access is set up. If this is a big roadblock for you, we can talk to the DevOps team about changing memory access. Containers using Mono do work, but they don't recognize soft links, so you may have to add the line `stageInMode 'link'` to the process definition in the "modules" folder.
+
+## Running your Nextflow workflow on Sasquatch {#sec-runningnextflow}
+
+These instructions assume that you have downloaded a workflow and added `sasquatch.config` as described in the previous section.
+
+One option to set your parameters is to modify them directly in the `nextflow.config` section called `params`. However, it might be preferable to create a `params.json` or `params.yaml` file, as described in the section on running an nf-core pipeline, to clearly delineate the parameters specific to your dataset. Anything in a `params` file will override the params in the `nextflow.config` file.
+
+You will want to run Nextflow from a [tmux session](Examples.qmd#optional-start-a-tmux-session), so let's start one.
+
+``` bash
+tmux new -s nextflow
+```
+
+Load your nextflow environment.
+
+``` bash
+mamba activate nextflow
+```
+
+With a profile set up to use Slurm, you can run Nextflow directly from the login node.
+
+``` bash
+nextflow \
+    -c nextflow.config \
+    run main.nf \
+    -profile sasquatch \
+    -params-file params.json \
+    -resume
+```
+
+Once it starts running, take a look at the Slurm jobs that have been submitted (use <kbd>Ctrl</kbd> + <kbd>b</kbd> <kbd>d</kbd> if needed to detach from the tmux session):
+
+``` bash
+grep "submitted process" .nextflow.log
+```
+
+For every task that has started so far, you should see a Slurm jobID, as well as the full path to the working directory for that task.
+
+Once the workflow has completed to your satisfaction, don't forget to free up space by deleting the Nextflow working directory (the one specified with `workDir`)! If you are troubleshooting though, hang onto it as it will enable the workflow to pick up where it left off.
+
+Questions? Weird errors? Reach out to us on the [Sasquatch Scientific Computing Forum](#)!

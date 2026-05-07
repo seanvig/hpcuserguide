@@ -1,0 +1,5 @@
+Expression	Description
+"-name pattern"	"Base  of  file  name  (the  path with the leading directories removed) matches ""pattern"""
+"-user uname"	"File is owned by user uname (numeric user ID allowed)"
+"-group gname"	"File belongs to group gname (numeric group ID allowed)"
+"-ctime n"	"Files status was last changed n*24 hours ago"

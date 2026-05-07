@@ -1,0 +1,7 @@
+State	Description
+"B"	"Job array has started"
+"W"	"Job array has a wait time in the future"
+"H"	"Job array is being held"
+"T"	"Job array is in transit"
+"Q"	"Job array is queued or has been qrerun"
+"E"	"All subjobs are finished; server is cleaning up the array job"
