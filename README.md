@@ -2,6 +2,8 @@
 
 A Quarto book providing guidance, best practices, and recommendations for users of Sasquatch, a High Performance Computing (HPC) cluster.
 
+**[View the published book](https://seanvig.github.io/hpcuserguide/)**
+
 > **Note:** This is an archival portfolio project — a snapshot of documentation built for a previous organization. Content may not reflect current Slurm syntax or HPC best practices.
 
 ---
